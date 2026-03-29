@@ -33,7 +33,8 @@ function isRunStep(step: SetupStep): step is { run: string; if?: Condition } {
 
 async function executeSetup(
   page: Page | null,
-  steps: SetupStep[]
+  steps: SetupStep[],
+  options: { cwd?: string } = {}
 ): Promise<void> {
   for (const step of steps) {
     // Check condition
@@ -44,15 +45,16 @@ async function executeSetup(
     }
 
     if (isRunStep(step)) {
-      // Shell command — runs before browser might even be available
       console.log(`  run: ${step.run}`);
       try {
-        await execa("sh", ["-c", step.run], { stdio: "inherit" });
+        await execa("sh", ["-c", step.run], {
+          stdio: "inherit",
+          cwd: options.cwd,
+        });
       } catch (err: any) {
         throw new Error(`Setup command failed: ${step.run}\n${err.message}`);
       }
     } else {
-      // Browser action
       if (!page) {
         throw new Error("Setup browser action requires an open page");
       }

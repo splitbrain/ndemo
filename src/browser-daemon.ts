@@ -21,6 +21,7 @@ async function findFreePort(): Promise<number> {
 
 async function main() {
   const playbookPath = process.argv[2];
+  const projectDir = process.argv[3] || process.cwd();
   if (!playbookPath) {
     console.error(JSON.stringify({ error: "No playbook path provided" }));
     process.exit(1);
@@ -78,7 +79,7 @@ async function main() {
 
   // Execute setup steps if any
   if (playbook.app.setup) {
-    await executeSetup(page, playbook.app.setup);
+    await executeSetup(page, playbook.app.setup, { cwd: projectDir });
   }
 
   // Print connection info to stdout (parent reads this)

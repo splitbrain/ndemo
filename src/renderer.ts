@@ -81,7 +81,7 @@ async function render(
   );
 
   if (playbook.app.setup) {
-    await executeSetup(page, playbook.app.setup);
+    await executeSetup(page, playbook.app.setup, { cwd: process.cwd() });
   }
 
   // Record segments

@@ -254,10 +254,14 @@ This produces the final mp4 with TTS narration.
 Setup steps run before the demo starts (on `open`, `reset`, `play`,
 and `render`). They can be shell commands or browser actions.
 
+**Shell commands execute relative to the project working directory**
+(the directory ndemo was called from). All paths in `run` commands
+should be relative to the project root.
+
 **Shell commands** — use `run` for file operations:
 ```yaml
 setup:
-  - run: cp fixtures/original.txt data/page.txt
+  - run: cp demo/my-feature/fixtures/original.txt data/page.txt
   - run: rm -f data/cache/*.tmp
   - run: ./scripts/reset-db.sh
 ```
