@@ -112,7 +112,7 @@ segments:
 The skill file teaches Claude Code to run these commands automatically, but you can also run them directly:
 
 ```bash
-node <skill-directory>/dist/cli.js <command>
+<skill-directory>/ndemo <command>
 ```
 
 | Command | Description |

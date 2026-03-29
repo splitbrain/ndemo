@@ -20,30 +20,26 @@ cd ${CLAUDE_SKILL_DIR} && npx playwright install chromium
 Verify the setup:
 
 ```bash
-node ${CLAUDE_SKILL_DIR}/dist/cli.js doctor
+${CLAUDE_SKILL_DIR}/ndemo doctor
 ```
 
 ## Commands
 
-Run all commands using `node ${CLAUDE_SKILL_DIR}/dist/cli.js` (abbreviated
-as `ndemo` below for readability):
+All commands are run via `${CLAUDE_SKILL_DIR}/ndemo`:
 
 | Command | What it does |
 |---------|-------------|
-| `ndemo open <playbook>` | Launch browser daemon, navigate to app |
-| `ndemo close` | Shut down browser daemon |
-| `ndemo reset` | Navigate back to app URL (fresh state) |
-| `ndemo page-state` | Print current page accessibility tree |
-| `ndemo page-state --screenshot` | Same + save screenshot to .ndemo/screenshot.png |
-| `ndemo play <playbook>` | Play all segments |
-| `ndemo play <playbook> --segment <id>` | Play one segment (rewinds first) |
-| `ndemo play <playbook> --from <id>` | Play from segment to end |
-| `ndemo play <playbook> --audio` | Play with TTS narration audio |
-| `ndemo render <playbook>` | Full pipeline: TTS → replay → merge → mp4 |
-| `ndemo doctor` | Check dependencies |
-
-In all examples below, replace `ndemo` with
-`node ${CLAUDE_SKILL_DIR}/dist/cli.js`.
+| `${CLAUDE_SKILL_DIR}/ndemo open <playbook>` | Launch browser daemon, navigate to app |
+| `${CLAUDE_SKILL_DIR}/ndemo close` | Shut down browser daemon |
+| `${CLAUDE_SKILL_DIR}/ndemo reset` | Navigate back to app URL (fresh state) |
+| `${CLAUDE_SKILL_DIR}/ndemo page-state` | Print current page accessibility tree |
+| `${CLAUDE_SKILL_DIR}/ndemo page-state --screenshot` | Same + save screenshot to .ndemo/screenshot.png |
+| `${CLAUDE_SKILL_DIR}/ndemo play <playbook>` | Play all segments |
+| `${CLAUDE_SKILL_DIR}/ndemo play <playbook> --segment <id>` | Play one segment (rewinds first) |
+| `${CLAUDE_SKILL_DIR}/ndemo play <playbook> --from <id>` | Play from segment to end |
+| `${CLAUDE_SKILL_DIR}/ndemo play <playbook> --audio` | Play with TTS narration audio |
+| `${CLAUDE_SKILL_DIR}/ndemo render <playbook>` | Full pipeline: TTS → replay → merge → mp4 |
+| `${CLAUDE_SKILL_DIR}/ndemo doctor` | Check dependencies |
 
 ## Workflow
 
@@ -83,7 +79,7 @@ to ndemo commands.
 ### Step 2 — Open the browser
 
 ```bash
-ndemo open /absolute/path/to/demo/my-demo/my-demo.yaml
+${CLAUDE_SKILL_DIR}/ndemo open /absolute/path/to/demo/my-demo/my-demo.yaml
 ```
 
 ### Step 3 — Author each segment
@@ -92,7 +88,7 @@ For each segment with empty actions:
 
 a) Read the current page state:
 ```bash
-ndemo page-state
+${CLAUDE_SKILL_DIR}/ndemo page-state
 ```
 
 b) Look at the accessibility tree output. Find the elements
@@ -149,11 +145,11 @@ what happened:
 
 c) Test the segment:
 ```bash
-ndemo play /absolute/path/to/demo/my-demo/my-demo.yaml --segment <id>
+${CLAUDE_SKILL_DIR}/ndemo play /absolute/path/to/demo/my-demo/my-demo.yaml --segment <id>
 ```
 
-d) If it fails, run `ndemo page-state` to see what's on screen
-now, adjust the actions, and retry.
+d) If it fails, run `${CLAUDE_SKILL_DIR}/ndemo page-state` to see
+what's on screen now, adjust the actions, and retry.
 
 e) After the segment works, read page-state again before
 authoring the next segment — the page has changed.
@@ -161,7 +157,7 @@ authoring the next segment — the page has changed.
 ### Step 4 — Review
 
 ```bash
-ndemo play /absolute/path/to/demo/my-demo/my-demo.yaml
+${CLAUDE_SKILL_DIR}/ndemo play /absolute/path/to/demo/my-demo/my-demo.yaml
 ```
 
 Watch the full sequence in the browser. Ask the user if it
@@ -170,7 +166,7 @@ looks right.
 To review with TTS narration (requires OPENAI_API_KEY and ffplay):
 
 ```bash
-ndemo play /absolute/path/to/demo/my-demo/my-demo.yaml --audio
+${CLAUDE_SKILL_DIR}/ndemo play /absolute/path/to/demo/my-demo/my-demo.yaml --audio
 ```
 
 This generates TTS audio for each segment (cached by content hash),
@@ -189,8 +185,8 @@ The user may request changes. Common patterns:
 | "Change narration to ..." | Edit narration field |
 | "Add a step showing X" | Insert new segment, author its actions |
 | "Remove that step" | Delete the segment from YAML |
-| "Replay from segment X" | `ndemo play --from <id>` |
-| "Start over" | `ndemo reset` then `ndemo play` |
+| "Replay from segment X" | `${CLAUDE_SKILL_DIR}/ndemo play --from <id>` |
+| "Start over" | `${CLAUDE_SKILL_DIR}/ndemo reset` then play again |
 
 After each change, replay the affected segment(s) to verify.
 
@@ -199,7 +195,7 @@ After each change, replay the affected segment(s) to verify.
 When the user approves:
 
 ```bash
-ndemo render /absolute/path/to/demo/my-demo/my-demo.yaml
+${CLAUDE_SKILL_DIR}/ndemo render /absolute/path/to/demo/my-demo/my-demo.yaml
 ```
 
 This produces the final mp4 with TTS narration.
@@ -224,8 +220,8 @@ This produces the final mp4 with TTS narration.
 
 ## Troubleshooting
 
-- **Browser not responding**: `ndemo close` then `ndemo open` again
-- **Element not found**: Run `ndemo page-state` to see what's
+- **Browser not responding**: `${CLAUDE_SKILL_DIR}/ndemo close` then `open` again
+- **Element not found**: Run `${CLAUDE_SKILL_DIR}/ndemo page-state` to see what's
   actually on the page. The element might have a different name
   than expected. Check the app's source code for test IDs.
 - **Actions pass but look wrong**: Run with `--segment <id>` to
