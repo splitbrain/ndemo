@@ -17,13 +17,11 @@ interface BrowserInfo {
   wsEndpoint: string;
   pid: number;
   playbookPath: string;
-  projectDir: string;
 }
 
 interface BrowserConnection {
   browser: Browser;
   page: Page;
-  info: BrowserInfo;
 }
 
 /**
@@ -69,7 +67,7 @@ async function open(playbookPath: string): Promise<void> {
   const daemonScript = path.join(__dirname, "browser-daemon.js");
   const child = spawn(
     process.execPath,
-    [daemonScript, absPlaybook, process.cwd()],
+    [daemonScript, absPlaybook],
     {
       detached: true,
       stdio: ["ignore", "pipe", "pipe"],
@@ -82,12 +80,8 @@ async function open(playbookPath: string): Promise<void> {
     let errOutput = "";
     const timeout = setTimeout(() => {
       child.kill();
-      reject(new Error(
-        `Browser daemon did not start within 30s.` +
-        (errOutput ? `\nstderr: ${errOutput}` : "") +
-        (output ? `\nstdout: ${output}` : "")
-      ));
-    }, 30000);
+      reject(new Error(`Browser daemon did not start within 15s. stderr: ${errOutput}`));
+    }, 15000);
 
     child.stdout!.on("data", (data: Buffer) => {
       output += data.toString();
@@ -126,7 +120,6 @@ async function open(playbookPath: string): Promise<void> {
     wsEndpoint: info.wsEndpoint,
     pid: child.pid,
     playbookPath: absPlaybook,
-    projectDir: process.cwd(),
   }));
 
   console.log(`Browser daemon started (PID ${child.pid})`);
@@ -157,7 +150,7 @@ async function connect(): Promise<BrowserConnection> {
   const pages = contexts[0].pages();
   if (pages.length === 0) throw new Error("No page found");
 
-  return { browser, page: pages[0], info };
+  return { browser, page: pages[0] };
 }
 
 async function close(): Promise<void> {
@@ -196,7 +189,7 @@ async function reset(): Promise<void> {
   );
 
   if (playbook.app.setup) {
-    await executeSetup(page, playbook.app.setup, { cwd: info.projectDir });
+    await executeSetup(page, playbook.app.setup);
   }
 
   console.log(`Reset to ${playbook.app.url}`);

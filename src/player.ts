@@ -12,7 +12,7 @@ async function play(
   options: { segment?: string; from?: string; to?: string; audio?: boolean }
 ): Promise<void> {
   const playbook = loadPlaybook(playbookPath);
-  const { page, info } = await connect();
+  const { page } = await connect();
 
   const allIds = playbook.segments.map(s => s.id);
   let targetStart = 0;
@@ -58,7 +58,7 @@ async function play(
     playbook.app.zoom
   );
   if (playbook.app.setup) {
-    await executeSetup(page, playbook.app.setup, { cwd: info.projectDir });
+    await executeSetup(page, playbook.app.setup);
   }
 
   // Execute pre-target segments silently

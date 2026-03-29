@@ -21,7 +21,6 @@ async function findFreePort(): Promise<number> {
 
 async function main() {
   const playbookPath = process.argv[2];
-  const projectDir = process.argv[3] || process.cwd();
   if (!playbookPath) {
     console.error(JSON.stringify({ error: "No playbook path provided" }));
     process.exit(1);
@@ -50,11 +49,6 @@ async function main() {
     ],
   });
 
-  // Print connection info immediately after browser launch,
-  // BEFORE navigation and setup — the parent process is waiting.
-  const cdpEndpoint = `http://localhost:${debugPort}`;
-  console.log(JSON.stringify({ wsEndpoint: cdpEndpoint }));
-
   const context = await browser.newContext({
     viewport: {
       width: playbook.app.viewport.width,
@@ -74,9 +68,7 @@ async function main() {
     });
   `);
 
-  await page.goto(playbook.app.url, { waitUntil: "domcontentloaded" });
-  // Wait briefly for network to settle, but don't hang forever
-  await page.waitForLoadState("networkidle").catch(() => {});
+  await page.goto(playbook.app.url, { waitUntil: "networkidle" });
 
   // Ensure zoom is applied
   await page.evaluate(
@@ -86,8 +78,12 @@ async function main() {
 
   // Execute setup steps if any
   if (playbook.app.setup) {
-    await executeSetup(page, playbook.app.setup, { cwd: projectDir });
+    await executeSetup(page, playbook.app.setup);
   }
+
+  // Print connection info to stdout (parent reads this)
+  const cdpEndpoint = `http://localhost:${debugPort}`;
+  console.log(JSON.stringify({ wsEndpoint: cdpEndpoint }));
 
   // Stay alive. Exit when browser closes.
   browser.on("disconnected", () => process.exit(0));
