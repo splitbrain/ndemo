@@ -4,7 +4,7 @@ Create narrated screen-recording demo videos of web applications.
 
 ## Setup
 
-On first use, you MUST build the toolkit before running any `ndemo` command.
+On first use, you MUST build the toolkit before running any command.
 Check if `${CLAUDE_SKILL_DIR}/dist/cli.js` exists. If not, run:
 
 ```bash
@@ -20,17 +20,13 @@ cd ${CLAUDE_SKILL_DIR} && npx playwright install chromium
 Verify the setup:
 
 ```bash
-cd ${CLAUDE_SKILL_DIR} && npx ndemo doctor
+node ${CLAUDE_SKILL_DIR}/dist/cli.js doctor
 ```
 
 ## Commands
 
-All commands are run from the skill directory:
-
-```bash
-cd ${CLAUDE_SKILL_DIR}
-npx ndemo <command>
-```
+Run all commands using `node ${CLAUDE_SKILL_DIR}/dist/cli.js` (abbreviated
+as `ndemo` below for readability):
 
 | Command | What it does |
 |---------|-------------|
@@ -45,6 +41,9 @@ npx ndemo <command>
 | `ndemo play <playbook> --audio` | Play with TTS narration audio |
 | `ndemo render <playbook>` | Full pipeline: TTS → replay → merge → mp4 |
 | `ndemo doctor` | Check dependencies |
+
+In all examples below, replace `ndemo` with
+`node ${CLAUDE_SKILL_DIR}/dist/cli.js`.
 
 ## Workflow
 
@@ -84,8 +83,7 @@ to ndemo commands.
 ### Step 2 — Open the browser
 
 ```bash
-cd ${CLAUDE_SKILL_DIR}
-npx ndemo open /absolute/path/to/demo/my-demo/my-demo.yaml
+ndemo open /absolute/path/to/demo/my-demo/my-demo.yaml
 ```
 
 ### Step 3 — Author each segment
@@ -94,7 +92,7 @@ For each segment with empty actions:
 
 a) Read the current page state:
 ```bash
-npx ndemo page-state
+ndemo page-state
 ```
 
 b) Look at the accessibility tree output. Find the elements
@@ -151,7 +149,7 @@ what happened:
 
 c) Test the segment:
 ```bash
-npx ndemo play /absolute/path/to/demos/my-demo.yaml --segment <id>
+ndemo play /absolute/path/to/demo/my-demo/my-demo.yaml --segment <id>
 ```
 
 d) If it fails, run `ndemo page-state` to see what's on screen
@@ -163,7 +161,7 @@ authoring the next segment — the page has changed.
 ### Step 4 — Review
 
 ```bash
-npx ndemo play /absolute/path/to/demos/my-demo.yaml
+ndemo play /absolute/path/to/demo/my-demo/my-demo.yaml
 ```
 
 Watch the full sequence in the browser. Ask the user if it
@@ -172,7 +170,7 @@ looks right.
 To review with TTS narration (requires OPENAI_API_KEY and ffplay):
 
 ```bash
-npx ndemo play /absolute/path/to/demos/my-demo.yaml --audio
+ndemo play /absolute/path/to/demo/my-demo/my-demo.yaml --audio
 ```
 
 This generates TTS audio for each segment (cached by content hash),
@@ -201,7 +199,7 @@ After each change, replay the affected segment(s) to verify.
 When the user approves:
 
 ```bash
-npx ndemo render /absolute/path/to/demos/my-demo.yaml
+ndemo render /absolute/path/to/demo/my-demo/my-demo.yaml
 ```
 
 This produces the final mp4 with TTS narration.

@@ -2,9 +2,6 @@
   "name": "ndemo",
   "version": "0.1.0",
   "type": "module",
-  "bin": {
-    "ndemo": "./dist/cli.js"
-  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch"

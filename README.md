@@ -112,8 +112,7 @@ segments:
 The skill file teaches Claude Code to run these commands automatically, but you can also run them directly:
 
 ```bash
-cd <skill-directory>
-npx ndemo <command>
+node <skill-directory>/dist/cli.js <command>
 ```
 
 | Command | Description |
