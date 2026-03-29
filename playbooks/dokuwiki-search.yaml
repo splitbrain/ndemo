@@ -11,6 +11,12 @@ app:
       if: { visible: "h1:has-text('Are you Human?')" }
 
 segments:
+  - id: intro-pause
+    intent: "Brief pause to show the landing page."
+    actions:
+      - type: wait
+        duration: 2000
+
   - id: search
     narration: "We open DokuWiki and search for agent."
     intent: "Type 'agent' into the search box and submit the search."

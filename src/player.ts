@@ -43,6 +43,7 @@ async function play(
     console.log("Preparing audio...");
     for (let i = targetStart; i <= targetEnd; i++) {
       const seg = playbook.segments[i];
+      if (!seg.narration) continue;
       process.stdout.write(`  ${seg.id}...`);
       const result = await ensureAudio(seg, playbook, outputDir);
       audioMap.set(seg.id, result);
