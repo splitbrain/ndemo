@@ -24,6 +24,7 @@ async function render(
   }
 
   const playbookDir = path.dirname(path.resolve(playbookPath));
+  const playbookName = path.basename(playbookPath, path.extname(playbookPath));
   const outputDir = path.resolve(playbookDir, playbook.recording.outputDir);
   fs.mkdirSync(outputDir, { recursive: true });
 
@@ -44,8 +45,9 @@ async function render(
 
   // Step 2: Headless replay with video recording
   console.log("\nRecording video...");
-  const videoRawDir = path.join(outputDir, "video-raw");
-  fs.mkdirSync(videoRawDir, { recursive: true });
+  // Playwright needs a temp dir for its auto-named webm; we rename it after.
+  const videoTmpDir = path.join(outputDir, ".video-tmp");
+  fs.mkdirSync(videoTmpDir, { recursive: true });
 
   // Use a physically larger viewport instead of deviceScaleFactor to get
   // high-resolution video. Playwright's video recorder captures at logical
@@ -64,7 +66,7 @@ async function render(
     colorScheme: playbook.app.colorScheme,
     locale: "en-US",
     recordVideo: {
-      dir: videoRawDir,
+      dir: videoTmpDir,
       size: {
         width: scaledWidth,
         height: scaledHeight,
@@ -130,14 +132,19 @@ async function render(
   await context.close();
   await browser.close();
 
-  const videoPath = videoObj ? await videoObj.path() : undefined;
-  if (!videoPath) {
+  const videoTmpPath = videoObj ? await videoObj.path() : undefined;
+  if (!videoTmpPath) {
     throw new Error("No video recorded");
   }
 
+  // Move webm to output dir with playbook name
+  const videoPath = path.join(outputDir, `${playbookName}.webm`);
+  fs.renameSync(videoTmpPath, videoPath);
+  fs.rmSync(videoTmpDir, { recursive: true, force: true });
+
   // Step 3: Merge
   console.log("\nMerging audio and video...");
-  const finalOutput = outputPath ?? path.join(outputDir, "demo.mp4");
+  const finalOutput = outputPath ?? path.join(outputDir, `${playbookName}.mp4`);
 
   await mergeAudioVideo({
     videoPath,
