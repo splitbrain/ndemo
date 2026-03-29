@@ -56,7 +56,7 @@ async function ensureAudio(
   const audioDir = path.join(outputDir, "audio");
   fs.mkdirSync(audioDir, { recursive: true });
 
-  const hash = ttsHash(segment.narration, playbook.tts.voice, playbook.tts.speed);
+  const hash = ttsHash(segment.narration!, playbook.tts.voice, playbook.tts.speed);
   const audioPath = path.join(audioDir, `${segment.id}-${hash}.mp3`);
 
   // Clean up stale files for this segment
@@ -75,7 +75,7 @@ async function ensureAudio(
       model: "tts-1-hd",
       voice: playbook.tts.voice as any,
       speed: playbook.tts.speed,
-      input: segment.narration,
+      input: segment.narration!,
       response_format: "mp3",
     });
 

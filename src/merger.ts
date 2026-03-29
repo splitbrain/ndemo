@@ -4,7 +4,7 @@ import { execa } from "execa";
 
 interface MergeSegment {
   id: string;
-  audioPath: string;
+  audioPath: string | null;
   audioDurationMs: number;
   videoDurationMs: number;
 }
@@ -23,9 +23,14 @@ async function mergeAudioVideo(options: MergeOptions): Promise<void> {
 
   // Build concatenated audio with silence gaps
   for (const segment of segments) {
-    audioFiles.push(segment.audioPath);
+    if (segment.audioPath) {
+      audioFiles.push(segment.audioPath);
+    }
 
-    const gapMs = Math.max(0, segment.videoDurationMs - segment.audioDurationMs);
+    // Fill remaining segment time (or full duration if no narration) with silence
+    const gapMs = segment.audioPath
+      ? Math.max(0, segment.videoDurationMs - segment.audioDurationMs)
+      : segment.videoDurationMs;
     if (gapMs > 50) {
       const silencePath = path.join(outputDir, "audio", `silence-${segment.id}.mp3`);
       await execa("ffmpeg", [

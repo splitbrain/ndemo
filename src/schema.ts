@@ -95,7 +95,7 @@ const SegmentSchema = z.object({
     /^[a-z0-9][a-z0-9-]*$/,
     "Segment ID must be lowercase alphanumeric with hyphens"
   ),
-  narration: z.string().min(1),
+  narration: z.string().min(1).optional(),
   intent: z.string().min(1),
   actions: z.array(ActionSchema).default([]),
   timing: z.enum(["after", "parallel"]).default("after"),

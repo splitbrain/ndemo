@@ -80,7 +80,7 @@ async function play(
   for (let i = targetStart; i <= targetEnd; i++) {
     const seg = playbook.segments[i];
     const audio = audioMap.get(seg.id);
-    console.log(`\n▸ segment ${seg.id}: "${seg.narration}"`);
+    console.log(`\n▸ segment ${seg.id}${seg.narration ? `: "${seg.narration}"` : ""}`);
 
     if (seg.actions.length === 0 && !audio) {
       console.log("  (no actions)");

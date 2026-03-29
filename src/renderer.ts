@@ -30,13 +30,19 @@ async function render(
 
   // Step 1: TTS
   console.log("Generating TTS audio...");
-  const audioResults: Array<{ id: string; audioPath: string; durationMs: number }> = [];
+  const audioResults: Array<{ id: string; audioPath: string | null; durationMs: number }> = [];
   for (const segment of playbook.segments) {
     process.stdout.write(`  ${segment.id}...`);
-    const result = await ensureAudio(segment, playbook, outputDir);
-    segment.audioDuration = result.durationMs;
-    audioResults.push({ id: segment.id, audioPath: result.audioPath, durationMs: result.durationMs });
-    console.log(` ${(result.durationMs / 1000).toFixed(1)}s`);
+    if (segment.narration) {
+      const result = await ensureAudio(segment, playbook, outputDir);
+      segment.audioDuration = result.durationMs;
+      audioResults.push({ id: segment.id, audioPath: result.audioPath, durationMs: result.durationMs });
+      console.log(` ${(result.durationMs / 1000).toFixed(1)}s`);
+    } else {
+      segment.audioDuration = 0;
+      audioResults.push({ id: segment.id, audioPath: null, durationMs: 0 });
+      console.log(" (no narration)");
+    }
   }
 
   // Save updated durations back to playbook
