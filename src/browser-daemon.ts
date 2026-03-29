@@ -68,6 +68,11 @@ async function main() {
     });
   `);
 
+  // Print connection info to stdout BEFORE navigation so the parent
+  // unblocks immediately — page load and setup can take arbitrarily long.
+  const cdpEndpoint = `http://localhost:${debugPort}`;
+  console.log(JSON.stringify({ wsEndpoint: cdpEndpoint }));
+
   await page.goto(playbook.app.url, { waitUntil: "load" });
 
   // Ensure zoom is applied
@@ -80,10 +85,6 @@ async function main() {
   if (playbook.app.setup) {
     await executeSetup(page, playbook.app.setup);
   }
-
-  // Print connection info to stdout (parent reads this)
-  const cdpEndpoint = `http://localhost:${debugPort}`;
-  console.log(JSON.stringify({ wsEndpoint: cdpEndpoint }));
 
   // Stay alive. Exit when browser closes.
   browser.on("disconnected", () => process.exit(0));
