@@ -2,12 +2,28 @@
 
 Create narrated screen-recording demo videos of web applications.
 
-## Commands
+## Setup
 
-All commands are run from the `narrated-demo/` subdirectory:
+On first use, build the toolkit if it hasn't been built yet:
 
 ```bash
-cd narrated-demo
+cd ${CLAUDE_SKILL_DIR}/narrated-demo && npm install && npm run build
+```
+
+Then install the Playwright browser if needed:
+
+```bash
+cd ${CLAUDE_SKILL_DIR}/narrated-demo && npx playwright install chromium
+```
+
+Run `npx ndemo doctor` from that directory to verify everything is ready.
+
+## Commands
+
+All commands are run from the skill's `narrated-demo/` directory:
+
+```bash
+cd ${CLAUDE_SKILL_DIR}/narrated-demo
 npx ndemo <command>
 ```
 
@@ -28,7 +44,7 @@ npx ndemo <command>
 
 ### Step 1 — Create the playbook
 
-Create a YAML file in `demos/` with this structure:
+Create a YAML file in the user's project (e.g. `demos/my-demo.yaml`) with this structure:
 
 ```yaml
 app:
@@ -43,12 +59,14 @@ segments:
 ```
 
 Write all segments with narration and intent first. Leave actions
-as empty arrays.
+as empty arrays. Use absolute paths or paths relative to the
+`narrated-demo/` directory when passing playbook paths to ndemo commands.
 
 ### Step 2 — Open the browser
 
 ```bash
-npx ndemo open demos/my-demo.yaml
+cd ${CLAUDE_SKILL_DIR}/narrated-demo
+npx ndemo open /absolute/path/to/demos/my-demo.yaml
 ```
 
 ### Step 3 — Author each segment
@@ -81,7 +99,7 @@ If there's no clear role/name, use a CSS selector:
 target: { selector: "#my-element" }
 ```
 
-**Tip:** The web app's source code is available in this repo.
+**Tip:** The web app's source code is available in the project repo.
 Look at the component source for `data-testid` attributes,
 class names, or IDs when the accessibility tree isn't sufficient.
 
@@ -114,7 +132,7 @@ what happened:
 
 c) Test the segment:
 ```bash
-npx ndemo play demos/my-demo.yaml --segment <id>
+npx ndemo play /absolute/path/to/demos/my-demo.yaml --segment <id>
 ```
 
 d) If it fails, run `ndemo page-state` to see what's on screen
@@ -126,7 +144,7 @@ authoring the next segment — the page has changed.
 ### Step 4 — Review
 
 ```bash
-npx ndemo play demos/my-demo.yaml
+npx ndemo play /absolute/path/to/demos/my-demo.yaml
 ```
 
 Watch the full sequence in the browser. Ask the user if it
@@ -153,7 +171,7 @@ After each change, replay the affected segment(s) to verify.
 When the user approves:
 
 ```bash
-npx ndemo render demos/my-demo.yaml
+npx ndemo render /absolute/path/to/demos/my-demo.yaml
 ```
 
 This produces the final mp4 with TTS narration.
