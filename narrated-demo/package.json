@@ -1,0 +1,28 @@
+{
+  "name": "narrated-demo",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "ndemo": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "playwright": "^1.48",
+    "openai": "^4.60",
+    "commander": "^12",
+    "zod": "^3.23",
+    "yaml": "^2.5",
+    "execa": "^9",
+    "chalk": "^5"
+  },
+  "devDependencies": {
+    "typescript": "^5.6",
+    "@types/node": "^22"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

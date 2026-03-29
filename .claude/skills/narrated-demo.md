@@ -1,0 +1,188 @@
+# narrated-demo
+
+Create narrated screen-recording demo videos of web applications.
+
+## Commands
+
+All commands are run from the `narrated-demo/` subdirectory:
+
+```bash
+cd narrated-demo
+npx ndemo <command>
+```
+
+| Command | What it does |
+|---------|-------------|
+| `ndemo open <playbook>` | Launch browser daemon, navigate to app |
+| `ndemo close` | Shut down browser daemon |
+| `ndemo reset` | Navigate back to app URL (fresh state) |
+| `ndemo page-state` | Print current page accessibility tree |
+| `ndemo page-state --screenshot` | Same + save screenshot to .ndemo/screenshot.png |
+| `ndemo play <playbook>` | Play all segments |
+| `ndemo play <playbook> --segment <id>` | Play one segment (rewinds first) |
+| `ndemo play <playbook> --from <id>` | Play from segment to end |
+| `ndemo render <playbook>` | Full pipeline: TTS → replay → merge → mp4 |
+| `ndemo doctor` | Check dependencies |
+
+## Workflow
+
+### Step 1 — Create the playbook
+
+Create a YAML file in `demos/` with this structure:
+
+```yaml
+app:
+  url: https://the-app-url.dev
+  # Optional: viewport, scale, zoom, colorScheme, setup
+
+segments:
+  - id: short-kebab-id
+    narration: "What the voiceover says."
+    intent: "What should happen on screen (for your reference)."
+    actions: []
+```
+
+Write all segments with narration and intent first. Leave actions
+as empty arrays.
+
+### Step 2 — Open the browser
+
+```bash
+npx ndemo open demos/my-demo.yaml
+```
+
+### Step 3 — Author each segment
+
+For each segment with empty actions:
+
+a) Read the current page state:
+```bash
+npx ndemo page-state
+```
+
+b) Look at the accessibility tree output. Find the elements
+referenced in the segment's intent. Write actions into the
+playbook YAML using elements from the tree.
+
+**How to write targets** — use info from page-state output:
+
+If page-state shows `[button "Settings"]`:
+```yaml
+target: { role: button, name: "Settings" }
+```
+
+If page-state shows `[searchbox "Search reports" value=""]`:
+```yaml
+target: { role: searchbox, name: "Search reports" }
+```
+
+If there's no clear role/name, use a CSS selector:
+```yaml
+target: { selector: "#my-element" }
+```
+
+**Tip:** The web app's source code is available in this repo.
+Look at the component source for `data-testid` attributes,
+class names, or IDs when the accessibility tree isn't sufficient.
+
+**How to write done conditions:**
+```yaml
+done:
+  visible: ".settings-panel"        # element appears
+  hidden: ".loading-spinner"        # element disappears
+  networkIdle: true                 # no pending requests
+  stable: 500                       # DOM unchanged for 500ms
+  url: "**/settings"                # URL changed
+  text:                             # element contains text
+    selector: ".results"
+    has: "Q3 Revenue"
+  attribute:                        # element has attribute
+    selector: html
+    name: data-theme
+    value: dark
+```
+
+**Every action that changes the page MUST have a done condition.**
+Without one, the next action may execute before the page is ready.
+
+Add `wait` actions after visible changes so the viewer can see
+what happened:
+```yaml
+- type: wait
+  duration: 2000    # 2 seconds
+```
+
+c) Test the segment:
+```bash
+npx ndemo play demos/my-demo.yaml --segment <id>
+```
+
+d) If it fails, run `ndemo page-state` to see what's on screen
+now, adjust the actions, and retry.
+
+e) After the segment works, read page-state again before
+authoring the next segment — the page has changed.
+
+### Step 4 — Review
+
+```bash
+npx ndemo play demos/my-demo.yaml
+```
+
+Watch the full sequence in the browser. Ask the user if it
+looks right.
+
+### Step 5 — Iterate
+
+The user may request changes. Common patterns:
+
+| User says | What to do |
+|-----------|-----------|
+| "Wrong button" | Run page-state, find correct element, update target |
+| "Too fast" / "too slow" | Adjust wait durations |
+| "Change narration to ..." | Edit narration field |
+| "Add a step showing X" | Insert new segment, author its actions |
+| "Remove that step" | Delete the segment from YAML |
+| "Replay from segment X" | `ndemo play --from <id>` |
+| "Start over" | `ndemo reset` then `ndemo play` |
+
+After each change, replay the affected segment(s) to verify.
+
+### Step 6 — Render
+
+When the user approves:
+
+```bash
+npx ndemo render demos/my-demo.yaml
+```
+
+This produces the final mp4 with TTS narration.
+
+## Action Types Reference
+
+| Type   | Required fields | Notes |
+|--------|----------------|-------|
+| click  | target         | |
+| type   | target, text   | Use delay: 60-100 for human-like typing |
+| hover  | target         | |
+| scroll | target         | Scrolls element into view |
+| wait   | duration (ms)  | Pause for the viewer |
+| press  | key            | Keyboard key, e.g. "Enter", "Escape" |
+| select | target, option | Dropdown selection |
+
+## Segment ID Rules
+
+- Lowercase alphanumeric with hyphens: `open-settings`, `toggle-dark`
+- Must be unique within the playbook
+- Used as filenames for audio/video, so keep them short
+
+## Troubleshooting
+
+- **Browser not responding**: `ndemo close` then `ndemo open` again
+- **Element not found**: Run `ndemo page-state` to see what's
+  actually on the page. The element might have a different name
+  than expected. Check the app's source code for test IDs.
+- **Actions pass but look wrong**: Run with `--segment <id>` to
+  replay just that segment and watch carefully.
+- **TTS sounds wrong**: Edit narration text (punctuation affects
+  pacing), or change voice/speed in playbook tts settings.
