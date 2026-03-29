@@ -7,6 +7,7 @@ import { runSegment } from "./executor.js";
 import { executeSetup } from "./setup.js";
 import { ensureAudio } from "./tts.js";
 import { mergeAudioVideo } from "./merger.js";
+import { generateSrt } from "./subtitles.js";
 
 async function render(
   playbookPath: string,
@@ -179,6 +180,7 @@ async function render(
       );
     }
 
+    segment.videoDuration = result.durationMs;
     segmentTimings.push({
       id: segment.id,
       durationMs: result.durationMs,
@@ -195,6 +197,9 @@ async function render(
   await cdp.detach();
   await context.close();
   await browser.close();
+
+  // Save video durations back to playbook
+  savePlaybook(playbookPath, playbook);
 
   if (frames.length === 0) {
     throw new Error("No frames captured");
@@ -253,6 +258,17 @@ async function render(
     try { fs.unlinkSync(videoPath); } catch {}
   }
 
+  // Generate SRT subtitles
+  const srtPath = finalOutput.replace(/\.mp4$/, ".srt");
+  const srtContent = generateSrt(
+    playbook.segments.map((s, i) => ({
+      narration: s.narration,
+      videoDurationMs: segmentTimings[i].durationMs,
+      audioDurationMs: s.audioDuration!,
+    }))
+  );
+  fs.writeFileSync(srtPath, srtContent);
+
   // Summary
   const stats = fs.statSync(finalOutput);
   const sizeMb = (stats.size / (1024 * 1024)).toFixed(1);
@@ -264,6 +280,7 @@ async function render(
   console.log(`  Duration: ${minutes}m ${seconds}s`);
   console.log(`  Size: ${sizeMb} MB`);
   console.log(`  Segments: ${playbook.segments.length}`);
+  console.log(`  Subtitles: ${srtPath}`);
 }
 
 export { render };

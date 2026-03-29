@@ -100,6 +100,7 @@ const SegmentSchema = z.object({
   actions: z.array(ActionSchema).default([]),
   timing: z.enum(["after", "parallel"]).default("after"),
   audioDuration: z.number().optional(),
+  videoDuration: z.number().optional(),
 });
 
 // ─── Playbook ────────────────────────────────────────

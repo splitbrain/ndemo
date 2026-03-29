@@ -6,7 +6,11 @@ import { connect } from "./browser.js";
 import { readPageState } from "./page-reader.js";
 import { play } from "./player.js";
 import { render } from "./renderer.js";
+import { generateSrt } from "./subtitles.js";
+import { loadPlaybook } from "./playbook-io.js";
 import { execSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 
 const program = new Command();
 
@@ -116,6 +120,37 @@ program
   .action(async (playbook: string, options: { output?: string }) => {
     try {
       await render(playbook, options.output);
+      process.exit(0);
+    } catch (err) {
+      console.error(`Error: ${err}`);
+      process.exit(1);
+    }
+  });
+
+// ─── subtitles ───────────────────────────────────
+
+program
+  .command("subtitles")
+  .description("Generate SRT subtitle file from playbook")
+  .argument("<playbook>", "Path to playbook YAML file")
+  .option("--output <path>", "Output SRT file path")
+  .action(async (playbookPath: string, options: { output?: string }) => {
+    try {
+      const playbook = loadPlaybook(playbookPath);
+      const playbookName = path.basename(playbookPath, path.extname(playbookPath));
+      const outputDir = path.resolve(path.dirname(playbookPath), playbook.recording.outputDir);
+
+      const srtContent = generateSrt(
+        playbook.segments.map(s => ({
+          narration: s.narration,
+          videoDurationMs: s.videoDuration ?? s.audioDuration ?? 0,
+          audioDurationMs: s.audioDuration ?? 0,
+        }))
+      );
+
+      const srtPath = options.output ?? path.join(outputDir, `${playbookName}.srt`);
+      fs.writeFileSync(srtPath, srtContent);
+      console.log(`✓ ${srtPath}`);
       process.exit(0);
     } catch (err) {
       console.error(`Error: ${err}`);
