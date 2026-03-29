@@ -36,7 +36,7 @@ async function main() {
     args: [
       `--remote-debugging-port=${debugPort}`,
       `--window-size=${playbook.app.viewport.width},${playbook.app.viewport.height}`,
-      `--force-device-scale-factor=${playbook.app.scale}`,
+      `--force-device-scale-factor=1`,
       "--high-dpi-support=1",
       "--enable-gpu-rasterization",
       "--disable-lcd-text",
@@ -56,7 +56,7 @@ async function main() {
       width: playbook.app.viewport.width,
       height: playbook.app.viewport.height,
     },
-    deviceScaleFactor: playbook.app.scale,
+    deviceScaleFactor: 1,
     colorScheme: playbook.app.colorScheme,
     locale: "en-US",
   });
