@@ -75,37 +75,64 @@ Claude Code will:
 5. Test each segment live
 6. Render the final mp4 with TTS narration
 
-You can also create the playbook yourself and ask Claude Code to fill in the actions. Each playbook lives in its own directory under `demo/`:
+### Example prompt
+
+Be specific about what the demo should show, what state needs restoring,
+and how to authenticate:
+
+> Create a narrated demo for editing a wiki page. The app runs at
+> http://localhost:8080/wiki. The demo should: (1) show the start
+> page, (2) click edit, (3) type some text, (4) save the page.
+> The demo modifies data/pages/start.txt so save a copy for
+> restoration. Login with admin/admin if needed.
+
+Claude Code will create a playbook directory with this structure:
 
 ```
 demo/
-  my-tour/
-    my-tour.yaml       ← playbook
+  edit-page/
+    edit-page.yaml     ← playbook
+    fixtures/          ← copies of files to restore during setup
     audio/             ← TTS files (generated)
     video-raw/         ← raw recording (generated)
     demo.mp4           ← final output (generated)
 ```
 
+The `fixtures/` directory holds copies of files that the demo modifies.
+Setup steps copy them back before each run so the demo is always
+repeatable.
+
+### Manual playbook
+
+You can also create the playbook yourself and ask Claude Code to fill
+in the actions:
+
 ```yaml
-# demo/my-tour/my-tour.yaml
+# demo/edit-page/edit-page.yaml
 app:
-  url: http://localhost:3000
+  url: http://localhost:8080/wiki
+  setup:
+    - run: cp demo/edit-page/fixtures/start.txt data/pages/start.txt
+    - type: click
+      target: { role: link, name: "Login" }
+      if:
+        hidden: ".user-info"
 
 segments:
   - id: intro
-    narration: "Welcome to our app. Let's take a quick tour."
-    intent: "show the landing page"
+    narration: "Welcome to our wiki. Let's edit a page."
+    intent: "show the start page"
     actions:
       - type: wait
-        duration: 3000
+        duration: 2000
 
-  - id: open-settings
-    narration: "First, open the settings panel."
-    intent: "click the settings button"
+  - id: open-editor
+    narration: "Click the edit button to open the editor."
+    intent: "click the edit button"
     actions: []
 ```
 
-> Fill in the actions for my demo playbook at demo/my-tour/my-tour.yaml
+> Fill in the actions for my demo playbook at demo/edit-page/edit-page.yaml
 
 ## CLI reference
 

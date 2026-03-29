@@ -47,50 +47,83 @@ All commands are run via `${CLAUDE_SKILL_DIR}/ndemo`:
 
 Each playbook lives in its own directory under `demo/` in the
 user's project. The directory name matches the playbook name.
-Audio, video, and rendered output all go into the same directory.
 
 ```
 demo/
   my-feature/
     my-feature.yaml    ← playbook
+    fixtures/          ← files to restore during setup
     audio/             ← generated TTS files (auto)
-    output/            ← rendered video (auto)
+    video-raw/         ← raw recording (auto)
+    demo.mp4           ← final output (auto)
 ```
+
+**Before writing the playbook**, think about what state the app
+needs to be in for the demo to work reliably and repeatably:
+
+- Does the user need to be logged in? → add conditional login steps
+- Does the demo modify files/data that need restoring? → copy
+  originals into the playbook's `fixtures/` directory so setup
+  can restore them
+- Does the demo depend on specific content existing? → create it
+  in fixtures or via setup shell commands
+
+**Copy any files that will be modified during the demo** into the
+`fixtures/` subdirectory of the playbook directory. Setup steps
+will copy them back before each run so the demo always starts
+from a clean state.
 
 Create the directory and YAML file:
 
 ```yaml
-# demo/my-feature/my-feature.yaml
+# demo/edit-page/edit-page.yaml
 app:
-  url: https://the-app-url.dev
-  # Optional: viewport, scale, zoom, colorScheme
+  url: http://localhost:8080/wiki
   setup:
-    # Shell commands for file operations
-    - run: cp fixtures/original.txt data/page.txt
+    # Restore files modified during the demo
+    - run: cp demo/edit-page/fixtures/page.txt data/pages/page.txt
+    # Clean up artifacts from previous runs
     - run: rm -f data/cache/*.tmp
-    # Browser actions with conditions (only run if condition is met)
+    # Login if needed (conditional — skipped if already logged in)
     - type: click
-      target: { role: button, name: "Login" }
+      target: { role: link, name: "Login" }
       if:
-        visible: ".login-form"
+        hidden: ".user-info"
     - type: type
       target: { role: textbox, name: "Username" }
       text: admin
       if:
         visible: ".login-form"
+    - type: type
+      target: { role: textbox, name: "Password" }
+      text: password
+      if:
+        visible: ".login-form"
+    - type: click
+      target: { role: button, name: "Sign in" }
+      if:
+        visible: ".login-form"
+      done:
+        visible: ".user-info"
 
 segments:
-  - id: short-kebab-id
-    narration: "What the voiceover says."
-    intent: "What should happen on screen (for your reference)."
-    timing: after    # "after" (default): actions run after narration finishes
-                     # "parallel": actions run while narration plays
+  - id: intro
+    narration: "Welcome to our wiki. Let's edit a page."
+    intent: "show the wiki start page"
+    actions:
+      - type: wait
+        duration: 2000
+
+  - id: open-editor
+    narration: "Click the edit button to open the editor."
+    intent: "click the edit button"
     actions: []
 ```
 
 Write all segments with narration and intent first. Leave actions
 as empty arrays. Use absolute paths when passing playbook paths
 to ndemo commands.
+
 
 ### Step 2 — Open the browser
 
