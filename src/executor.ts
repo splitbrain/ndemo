@@ -2,7 +2,7 @@ import type { Page } from "playwright";
 import type { Action, Segment } from "./schema.js";
 import { toLocator } from "./locators.js";
 import { waitForDone } from "./waiters.js";
-import { pointAt, clickEffect } from "./cursor.js";
+import { pointAt, clickEffect, hideCursor } from "./cursor.js";
 
 async function executeAction(
   page: Page,
@@ -37,6 +37,7 @@ async function executeAction(
       await locator.click();
       break;
     case "type":
+      if (showCursor) await hideCursor(page);
       await locator.fill("");
       await locator.pressSequentially(
         action.text!,
@@ -45,6 +46,7 @@ async function executeAction(
       break;
     case "hover":
       await locator.hover();
+      if (showCursor) await hideCursor(page);
       break;
     case "scroll":
       await locator.scrollIntoViewIfNeeded();

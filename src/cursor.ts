@@ -12,17 +12,19 @@ const CURSOR_STYLE = `
   pointer-events: none;
   z-index: 2147483647;
   transform: translate(-50%, -50%);
+  opacity: 0;
   transition: left 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-              top 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-  display: none;
+              top 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.25s ease;
 }
 #ndemo-cursor.visible {
-  display: block;
+  opacity: 1;
 }
 #ndemo-cursor.clicking {
   transform: translate(-50%, -50%) scale(0.7);
   transition: left 0.35s cubic-bezier(0.22, 1, 0.36, 1),
               top 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.25s ease,
               transform 0.1s ease-in;
 }
 
@@ -141,9 +143,21 @@ async function clickEffect(page: Page): Promise<void> {
     const cursor = document.getElementById("ndemo-cursor");
     if (!cursor) return;
     cursor.classList.add("clicking");
-    setTimeout(() => cursor.classList.remove("clicking"), 150);
+    setTimeout(() => {
+      cursor.classList.remove("clicking");
+      cursor.classList.remove("visible");
+    }, 150);
   });
-  await page.waitForTimeout(150);
+  await page.waitForTimeout(200);
 }
 
-export { injectCursor, pointAt, clickEffect };
+/**
+ * Fade out the cursor after a non-click action (type, hover, select).
+ */
+async function hideCursor(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    document.getElementById("ndemo-cursor")?.classList.remove("visible");
+  });
+}
+
+export { injectCursor, pointAt, clickEffect, hideCursor };
