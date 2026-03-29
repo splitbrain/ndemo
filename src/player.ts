@@ -88,7 +88,9 @@ async function play(
       continue;
     }
 
-    // Start audio playback in background if --audio
+    const timing = seg.timing ?? "after";
+
+    // Start audio playback if --audio
     let audioProcess: ReturnType<typeof execa> | null = null;
     if (audio) {
       audioProcess = execa("ffplay", [
@@ -96,6 +98,13 @@ async function play(
         audio.audioPath,
       ]);
       audioProcess.catch(() => {});
+
+      // "after" timing: wait for narration to finish before running actions
+      if (timing === "after" && seg.actions.length > 0) {
+        await page.waitForTimeout(audio.durationMs);
+        try { await audioProcess; } catch {}
+        audioProcess = null; // already done
+      }
     }
 
     const segmentStart = Date.now();
@@ -115,7 +124,7 @@ async function play(
       }
     }
 
-    // Always wait for audio to finish before moving to next segment
+    // For "parallel" timing, wait for audio to finish after actions complete
     if (audioProcess) {
       const elapsed = Date.now() - segmentStart;
       const remaining = audio!.durationMs - elapsed;

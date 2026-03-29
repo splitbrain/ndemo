@@ -92,6 +92,13 @@ async function render(
   for (const segment of playbook.segments) {
     process.stdout.write(`  ${segment.id}...`);
     const segmentStart = Date.now();
+    const timing = segment.timing ?? "after";
+    const audioDuration = segment.audioDuration!;
+
+    // "after" timing: wait for narration duration before running actions
+    if (timing === "after" && segment.actions.length > 0) {
+      await page.waitForTimeout(audioDuration);
+    }
 
     for (let i = 0; i < segment.actions.length; i++) {
       try {
@@ -109,7 +116,6 @@ async function render(
     }
 
     const elapsed = Date.now() - segmentStart;
-    const audioDuration = segment.audioDuration!;
     const remaining = audioDuration - elapsed;
     if (remaining > 0) {
       await page.waitForTimeout(remaining);

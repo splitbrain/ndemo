@@ -159,6 +159,7 @@ segments:
   - id: segment-name                # lowercase, hyphens, unique
     narration: "What the viewer hears."
     intent: "What happens on screen (for Claude Code's reference)."
+    timing: after                    # after (default) or parallel
     actions:
       - type: click
         target: { role: button, name: "Settings" }

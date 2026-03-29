@@ -69,6 +69,8 @@ segments:
   - id: short-kebab-id
     narration: "What the voiceover says."
     intent: "What should happen on screen (for your reference)."
+    timing: after    # "after" (default): actions run after narration finishes
+                     # "parallel": actions run while narration plays
     actions: []
 ```
 

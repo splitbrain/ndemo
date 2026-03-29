@@ -67,6 +67,7 @@ const SegmentSchema = z.object({
   narration: z.string().min(1),
   intent: z.string().min(1),
   actions: z.array(ActionSchema).default([]),
+  timing: z.enum(["after", "parallel"]).default("after"),
   audioDuration: z.number().optional(),
 });
 
