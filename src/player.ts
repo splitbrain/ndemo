@@ -80,25 +80,22 @@ async function play(
   // Play target segments with full output
   for (let i = targetStart; i <= targetEnd; i++) {
     const seg = playbook.segments[i];
+    const audio = audioMap.get(seg.id);
     console.log(`\n▸ segment ${seg.id}: "${seg.narration}"`);
 
-    if (seg.actions.length === 0) {
+    if (seg.actions.length === 0 && !audio) {
       console.log("  (no actions)");
       continue;
     }
 
     // Start audio playback in background if --audio
-    const audio = audioMap.get(seg.id);
     let audioProcess: ReturnType<typeof execa> | null = null;
     if (audio) {
       audioProcess = execa("ffplay", [
         "-nodisp", "-autoexit", "-loglevel", "quiet",
         audio.audioPath,
       ]);
-      // Don't await — let it play in parallel with actions
-      audioProcess.catch(() => {
-        // Ignore errors from audio playback (e.g. ffplay not found)
-      });
+      audioProcess.catch(() => {});
     }
 
     const segmentStart = Date.now();
@@ -118,14 +115,13 @@ async function play(
       }
     }
 
-    // If playing with audio, pad to audio duration so segment timing matches narration
-    if (audio) {
+    // Always wait for audio to finish before moving to next segment
+    if (audioProcess) {
       const elapsed = Date.now() - segmentStart;
-      const remaining = audio.durationMs - elapsed;
+      const remaining = audio!.durationMs - elapsed;
       if (remaining > 0) {
         await page.waitForTimeout(remaining);
       }
-      // Wait for audio to finish
       try { await audioProcess; } catch {}
     }
   }
