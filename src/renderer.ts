@@ -56,7 +56,39 @@ async function render(
   const scaledWidth = playbook.app.viewport.width * playbook.app.scale;
   const scaledHeight = playbook.app.viewport.height * playbook.app.scale;
 
+  const renderZoom = playbook.app.zoom * playbook.app.scale;
   const browser = await chromium.launch({ headless: true });
+
+  // Run setup in a non-recording context, then capture browser state
+  let storageState: Awaited<ReturnType<import("playwright").BrowserContext["storageState"]>> | undefined;
+  let startUrl = playbook.app.url;
+
+  if (playbook.app.setup) {
+    console.log("  Running setup...");
+    const setupContext = await browser.newContext({
+      viewport: { width: scaledWidth, height: scaledHeight },
+      deviceScaleFactor: 1,
+      colorScheme: playbook.app.colorScheme,
+      locale: "en-US",
+    });
+    const setupPage = await setupContext.newPage();
+    await setupPage.addInitScript(`
+      document.addEventListener('DOMContentLoaded', () => {
+        document.body.style.zoom = '${renderZoom}';
+      });
+    `);
+    await setupPage.goto(playbook.app.url, { waitUntil: "load" });
+    await setupPage.evaluate(
+      (z: number) => { document.body.style.zoom = String(z); },
+      renderZoom
+    );
+    await executeSetup(setupPage, playbook.app.setup);
+    startUrl = setupPage.url();
+    storageState = await setupContext.storageState();
+    await setupContext.close();
+  }
+
+  // Create the recording context (with saved state from setup if any)
   const context = await browser.newContext({
     viewport: {
       width: scaledWidth,
@@ -65,6 +97,7 @@ async function render(
     deviceScaleFactor: 1,
     colorScheme: playbook.app.colorScheme,
     locale: "en-US",
+    storageState,
     recordVideo: {
       dir: videoTmpDir,
       size: {
@@ -77,22 +110,17 @@ async function render(
   const page = await context.newPage();
 
   // Apply zoom, scaled up to compensate for the larger viewport
-  const renderZoom = playbook.app.zoom * playbook.app.scale;
   await page.addInitScript(`
     document.addEventListener('DOMContentLoaded', () => {
       document.body.style.zoom = '${renderZoom}';
     });
   `);
 
-  await page.goto(playbook.app.url, { waitUntil: "load" });
+  await page.goto(startUrl, { waitUntil: "load" });
   await page.evaluate(
     (z: number) => { document.body.style.zoom = String(z); },
     renderZoom
   );
-
-  if (playbook.app.setup) {
-    await executeSetup(page, playbook.app.setup);
-  }
 
   // Record segments
   const segmentTimings: Array<{ id: string; durationMs: number; audioDurationMs: number }> = [];
