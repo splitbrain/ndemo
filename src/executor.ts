@@ -2,7 +2,7 @@ import type { Page } from "playwright";
 import type { Action, Segment } from "./schema.js";
 import { toLocator } from "./locators.js";
 import { waitForDone } from "./waiters.js";
-import { pointAt, clickFeedback, hideHighlight } from "./cursor.js";
+import { pointAt, clickEffect } from "./cursor.js";
 
 async function executeAction(
   page: Page,
@@ -31,8 +31,10 @@ async function executeAction(
 
   switch (action.type) {
     case "click":
+      // Click effect BEFORE the click — the click may trigger navigation
+      // which destroys the DOM, so the effect must be visible first.
+      if (showCursor) await clickEffect(page);
       await locator.click();
-      if (showCursor) await clickFeedback(page);
       break;
     case "type":
       await locator.fill("");
@@ -40,18 +42,16 @@ async function executeAction(
         action.text!,
         { delay: action.delay ?? 80 }
       );
-      if (showCursor) await hideHighlight(page);
       break;
     case "hover":
       await locator.hover();
-      if (showCursor) await hideHighlight(page);
       break;
     case "scroll":
       await locator.scrollIntoViewIfNeeded();
       break;
     case "select":
+      if (showCursor) await clickEffect(page);
       await locator.selectOption(action.option!);
-      if (showCursor) await clickFeedback(page);
       break;
   }
 

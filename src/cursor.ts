@@ -33,11 +33,12 @@ const CURSOR_STYLE = `
   border-radius: 4px;
   border: 2px solid rgba(255, 60, 60, 0.7);
   background: rgba(255, 60, 60, 0.08);
-  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-  display: none;
+  transition: opacity 0.3s ease, left 0.3s ease, top 0.3s ease,
+              width 0.3s ease, height 0.3s ease;
+  opacity: 0;
 }
 #ndemo-highlight.visible {
-  display: block;
+  opacity: 1;
 }
 `;
 
@@ -62,41 +63,79 @@ async function injectCursor(page: Page): Promise<void> {
   }, CURSOR_STYLE);
 }
 
-async function showCursorAt(page: Page, x: number, y: number): Promise<void> {
-  await page.evaluate(({ x, y }: { x: number; y: number }) => {
-    const cursor = document.getElementById("ndemo-cursor");
-    if (!cursor) return;
-    cursor.style.left = x + "px";
-    cursor.style.top = y + "px";
-    cursor.classList.add("visible");
-  }, { x, y });
+/**
+ * Get an element's center and bounding rect in coordinates that work
+ * for our fixed-position cursor, accounting for CSS zoom on body.
+ */
+async function getElementPosition(locator: Locator): Promise<{
+  cx: number; cy: number;
+  rect: { x: number; y: number; width: number; height: number };
+} | null> {
+  try {
+    return await locator.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const zoom = parseFloat(document.body.style.zoom) || 1;
+      // getBoundingClientRect returns zoomed coordinates in the viewport.
+      // Fixed-position elements inside a zoomed body are also zoomed,
+      // so we need to divide by zoom to get the right CSS position.
+      return {
+        cx: (r.left + r.width / 2) / zoom,
+        cy: (r.top + r.height / 2) / zoom,
+        rect: {
+          x: r.left / zoom,
+          y: r.top / zoom,
+          width: r.width / zoom,
+          height: r.height / zoom,
+        },
+      };
+    });
+  } catch {
+    return null;
+  }
 }
 
-async function highlightRect(
-  page: Page,
-  rect: { x: number; y: number; width: number; height: number },
-  padding = 4
-): Promise<void> {
-  await page.evaluate(({ rect, padding }: {
+/**
+ * Animate cursor to a locator's center, briefly flash the highlight,
+ * then return so the caller can perform the action.
+ */
+async function pointAt(page: Page, locator: Locator): Promise<void> {
+  await injectCursor(page);
+
+  const pos = await getElementPosition(locator);
+  if (!pos) return;
+
+  // Move cursor and show highlight
+  await page.evaluate(({ cx, cy, rect }: {
+    cx: number; cy: number;
     rect: { x: number; y: number; width: number; height: number };
-    padding: number;
   }) => {
-    const el = document.getElementById("ndemo-highlight");
-    if (!el) return;
-    el.style.left = (rect.x - padding) + "px";
-    el.style.top = (rect.y - padding) + "px";
-    el.style.width = (rect.width + padding * 2) + "px";
-    el.style.height = (rect.height + padding * 2) + "px";
-    el.classList.add("visible");
-  }, { rect, padding });
+    const padding = 4;
+    const cursor = document.getElementById("ndemo-cursor");
+    const highlight = document.getElementById("ndemo-highlight");
+    if (cursor) {
+      cursor.style.left = cx + "px";
+      cursor.style.top = cy + "px";
+      cursor.classList.add("visible");
+    }
+    if (highlight) {
+      highlight.style.left = (rect.x - padding) + "px";
+      highlight.style.top = (rect.y - padding) + "px";
+      highlight.style.width = (rect.width + padding * 2) + "px";
+      highlight.style.height = (rect.height + padding * 2) + "px";
+      highlight.classList.add("visible");
+      // Auto-hide highlight after 600ms
+      setTimeout(() => highlight.classList.remove("visible"), 600);
+    }
+  }, pos);
+
+  // Wait for cursor travel animation
+  await page.waitForTimeout(400);
 }
 
-async function hideHighlight(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    document.getElementById("ndemo-highlight")?.classList.remove("visible");
-  });
-}
-
+/**
+ * Show click feedback (cursor shrink) BEFORE the actual click.
+ * This ensures the effect is visible even if the click causes navigation.
+ */
 async function clickEffect(page: Page): Promise<void> {
   await page.evaluate(() => {
     const cursor = document.getElementById("ndemo-cursor");
@@ -104,34 +143,7 @@ async function clickEffect(page: Page): Promise<void> {
     cursor.classList.add("clicking");
     setTimeout(() => cursor.classList.remove("clicking"), 150);
   });
+  await page.waitForTimeout(150);
 }
 
-/**
- * Animate cursor to a locator's center, highlight the element,
- * then return so the caller can perform the action.
- */
-async function pointAt(page: Page, locator: Locator): Promise<void> {
-  await injectCursor(page);
-
-  const box = await locator.boundingBox();
-  if (!box) return;
-
-  const cx = box.x + box.width / 2;
-  const cy = box.y + box.height / 2;
-
-  await highlightRect(page, box);
-  await showCursorAt(page, cx, cy);
-  // Let the transition animate
-  await page.waitForTimeout(400);
-}
-
-/**
- * Show click feedback (cursor shrink), then hide highlight after a delay.
- */
-async function clickFeedback(page: Page): Promise<void> {
-  await clickEffect(page);
-  await page.waitForTimeout(200);
-  await hideHighlight(page);
-}
-
-export { injectCursor, pointAt, clickFeedback, hideHighlight, showCursorAt };
+export { injectCursor, pointAt, clickEffect };
