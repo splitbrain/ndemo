@@ -7,23 +7,23 @@ Create narrated screen-recording demo videos of web applications.
 On first use, build the toolkit if it hasn't been built yet:
 
 ```bash
-cd ${CLAUDE_SKILL_DIR}/ndemo && npm install && npm run build
+cd ${CLAUDE_SKILL_DIR} &&npm install && npm run build
 ```
 
 Then install the Playwright browser if needed:
 
 ```bash
-cd ${CLAUDE_SKILL_DIR}/ndemo && npx playwright install chromium
+cd ${CLAUDE_SKILL_DIR} &&npx playwright install chromium
 ```
 
 Run `npx ndemo doctor` from that directory to verify everything is ready.
 
 ## Commands
 
-All commands are run from the skill's `ndemo/` directory:
+All commands are run from the skill directory:
 
 ```bash
-cd ${CLAUDE_SKILL_DIR}/ndemo
+cd ${CLAUDE_SKILL_DIR}
 npx ndemo <command>
 ```
 
@@ -79,8 +79,8 @@ to ndemo commands.
 ### Step 2 — Open the browser
 
 ```bash
-cd ${CLAUDE_SKILL_DIR}/ndemo
-npx ndemo open /absolute/path/to/demos/my-demo.yaml
+cd ${CLAUDE_SKILL_DIR}
+npx ndemo open /absolute/path/to/demo/my-demo/my-demo.yaml
 ```
 
 ### Step 3 — Author each segment
