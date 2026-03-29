@@ -90,7 +90,7 @@ const PlaybookSchema = z.object({
     speed: z.number().positive().default(1.0),
   }).default({}),
   recording: z.object({
-    outputDir: z.string().default("./output"),
+    outputDir: z.string().default("."),
     fps: z.number().int().positive().default(30),
   }).default({}),
   segments: z.array(SegmentSchema).min(1),

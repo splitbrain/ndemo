@@ -37,7 +37,8 @@ async function play(
   // If --audio, ensure TTS audio is up to date for target segments
   const audioMap = new Map<string, { audioPath: string; durationMs: number }>();
   if (options.audio) {
-    const outputDir = path.resolve(playbook.recording.outputDir);
+    const playbookDir = path.dirname(path.resolve(playbookPath));
+    const outputDir = path.resolve(playbookDir, playbook.recording.outputDir);
     console.log("Preparing audio...");
     for (let i = targetStart; i <= targetEnd; i++) {
       const seg = playbook.segments[i];

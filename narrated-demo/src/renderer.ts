@@ -23,7 +23,8 @@ async function render(
     );
   }
 
-  const outputDir = path.resolve(playbook.recording.outputDir);
+  const playbookDir = path.dirname(path.resolve(playbookPath));
+  const outputDir = path.resolve(playbookDir, playbook.recording.outputDir);
   fs.mkdirSync(outputDir, { recursive: true });
 
   // Step 1: TTS

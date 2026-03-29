@@ -45,9 +45,22 @@ npx ndemo <command>
 
 ### Step 1 — Create the playbook
 
-Create a YAML file in the user's project (e.g. `demos/my-demo.yaml`) with this structure:
+Each playbook lives in its own directory under `demo/` in the
+user's project. The directory name matches the playbook name.
+Audio, video, and rendered output all go into the same directory.
+
+```
+demo/
+  my-feature/
+    my-feature.yaml    ← playbook
+    audio/             ← generated TTS files (auto)
+    output/            ← rendered video (auto)
+```
+
+Create the directory and YAML file:
 
 ```yaml
+# demo/my-feature/my-feature.yaml
 app:
   url: https://the-app-url.dev
   # Optional: viewport, scale, zoom, colorScheme, setup
@@ -60,8 +73,8 @@ segments:
 ```
 
 Write all segments with narration and intent first. Leave actions
-as empty arrays. Use absolute paths or paths relative to the
-`narrated-demo/` directory when passing playbook paths to ndemo commands.
+as empty arrays. Use absolute paths when passing playbook paths
+to ndemo commands.
 
 ### Step 2 — Open the browser
 

@@ -52,10 +52,19 @@ Claude Code will:
 5. Test each segment live
 6. Render the final mp4 with TTS narration
 
-You can also create the playbook yourself and ask Claude Code to fill in the actions:
+You can also create the playbook yourself and ask Claude Code to fill in the actions. Each playbook lives in its own directory under `demo/`:
+
+```
+demo/
+  my-tour/
+    my-tour.yaml       ← playbook
+    audio/             ← TTS files (generated)
+    video-raw/         ← raw recording (generated)
+    demo.mp4           ← final output (generated)
+```
 
 ```yaml
-# demos/my-demo.yaml
+# demo/my-tour/my-tour.yaml
 app:
   url: http://localhost:3000
 
@@ -73,7 +82,7 @@ segments:
     actions: []
 ```
 
-> Fill in the actions for my demo playbook at demos/my-demo.yaml
+> Fill in the actions for my demo playbook at demo/my-tour/my-tour.yaml
 
 ## CLI reference
 
@@ -121,7 +130,7 @@ tts:                                # optional, defaults shown
   speed: 1.0
 
 recording:                          # optional, defaults shown
-  outputDir: ./output
+  outputDir: .                      # relative to playbook directory
   fps: 30
 
 segments:
