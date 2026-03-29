@@ -3,7 +3,7 @@ import path from "node:path";
 import { chromium } from "playwright";
 import { loadPlaybook, savePlaybook } from "./playbook-io.js";
 import { executeAction } from "./executor.js";
-import { generateTts } from "./tts.js";
+import { ensureAudio } from "./tts.js";
 import { mergeAudioVideo } from "./merger.js";
 import type { Playbook } from "./schema.js";
 
@@ -28,10 +28,12 @@ async function render(
 
   // Step 1: TTS
   console.log("Generating TTS audio...");
+  const audioResults: Array<{ id: string; audioPath: string; durationMs: number }> = [];
   for (const segment of playbook.segments) {
     process.stdout.write(`  ${segment.id}...`);
-    const result = await generateTts(segment, playbook, outputDir);
+    const result = await ensureAudio(segment, playbook, outputDir);
     segment.audioDuration = result.durationMs;
+    audioResults.push({ id: segment.id, audioPath: result.audioPath, durationMs: result.durationMs });
     console.log(` ${(result.durationMs / 1000).toFixed(1)}s`);
   }
 
@@ -139,7 +141,7 @@ async function render(
     videoPath,
     segments: playbook.segments.map((s, i) => ({
       id: s.id,
-      audioPath: path.join(outputDir, "audio", `${s.id}.mp3`),
+      audioPath: audioResults[i].audioPath,
       audioDurationMs: s.audioDuration!,
       videoDurationMs: segmentTimings[i].durationMs,
     })),

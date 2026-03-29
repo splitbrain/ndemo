@@ -1,11 +1,14 @@
+import path from "node:path";
+import { execa } from "execa";
 import { connect } from "./browser.js";
 import { loadPlaybook } from "./playbook-io.js";
 import { executeAction, executeSegment } from "./executor.js";
-import type { Action } from "./schema.js";
+import { ensureAudio } from "./tts.js";
+import type { Action, Playbook, Segment } from "./schema.js";
 
 async function play(
   playbookPath: string,
-  options: { segment?: string; from?: string; to?: string }
+  options: { segment?: string; from?: string; to?: string; audio?: boolean }
 ): Promise<void> {
   const playbook = loadPlaybook(playbookPath);
   const { page } = await connect();
@@ -29,6 +32,20 @@ async function play(
     const idx = allIds.indexOf(options.to);
     if (idx === -1) throw new Error(`Segment "${options.to}" not found`);
     targetEnd = idx;
+  }
+
+  // If --audio, ensure TTS audio is up to date for target segments
+  const audioMap = new Map<string, { audioPath: string; durationMs: number }>();
+  if (options.audio) {
+    const outputDir = path.resolve(playbook.recording.outputDir);
+    console.log("Preparing audio...");
+    for (let i = targetStart; i <= targetEnd; i++) {
+      const seg = playbook.segments[i];
+      process.stdout.write(`  ${seg.id}...`);
+      const result = await ensureAudio(seg, playbook, outputDir);
+      audioMap.set(seg.id, result);
+      console.log(` ${(result.durationMs / 1000).toFixed(1)}s`);
+    }
   }
 
   // Rewind
@@ -72,6 +89,22 @@ async function play(
       continue;
     }
 
+    // Start audio playback in background if --audio
+    const audio = audioMap.get(seg.id);
+    let audioProcess: ReturnType<typeof execa> | null = null;
+    if (audio) {
+      audioProcess = execa("ffplay", [
+        "-nodisp", "-autoexit", "-loglevel", "quiet",
+        audio.audioPath,
+      ]);
+      // Don't await — let it play in parallel with actions
+      audioProcess.catch(() => {
+        // Ignore errors from audio playback (e.g. ffplay not found)
+      });
+    }
+
+    const segmentStart = Date.now();
+
     for (let j = 0; j < seg.actions.length; j++) {
       const action = seg.actions[j];
       const desc = describeAction(action);
@@ -86,8 +119,20 @@ async function play(
         console.error(
           `  Failed at segment "${seg.id}", action ${j}`
         );
+        if (audioProcess) audioProcess.kill();
         process.exit(1);
       }
+    }
+
+    // If playing with audio, pad to audio duration so segment timing matches narration
+    if (audio) {
+      const elapsed = Date.now() - segmentStart;
+      const remaining = audio.durationMs - elapsed;
+      if (remaining > 0) {
+        await page.waitForTimeout(remaining);
+      }
+      // Wait for audio to finish
+      try { await audioProcess; } catch {}
     }
   }
 

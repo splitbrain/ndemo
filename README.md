@@ -95,6 +95,7 @@ npx ndemo <command>
 | `ndemo play <playbook> --segment <id>` | Play just one segment (rewinds first) |
 | `ndemo play <playbook> --from <id>` | Play from a segment to the end |
 | `ndemo play <playbook> --from <id> --to <id>` | Play a range of segments |
+| `ndemo play <playbook> --audio` | Play with TTS narration (combinable with other flags) |
 | `ndemo render <playbook>` | Full pipeline: TTS, headless replay, merge to mp4 |
 | `ndemo render <playbook> --output path.mp4` | Render to a specific output path |
 | `ndemo doctor` | Check that all dependencies are installed |

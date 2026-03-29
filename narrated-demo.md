@@ -37,6 +37,7 @@ npx ndemo <command>
 | `ndemo play <playbook>` | Play all segments |
 | `ndemo play <playbook> --segment <id>` | Play one segment (rewinds first) |
 | `ndemo play <playbook> --from <id>` | Play from segment to end |
+| `ndemo play <playbook> --audio` | Play with TTS narration audio |
 | `ndemo render <playbook>` | Full pipeline: TTS → replay → merge → mp4 |
 | `ndemo doctor` | Check dependencies |
 
@@ -150,6 +151,17 @@ npx ndemo play /absolute/path/to/demos/my-demo.yaml
 Watch the full sequence in the browser. Ask the user if it
 looks right.
 
+To review with TTS narration (requires OPENAI_API_KEY and ffplay):
+
+```bash
+npx ndemo play /absolute/path/to/demos/my-demo.yaml --audio
+```
+
+This generates TTS audio for each segment (cached by content hash),
+plays the audio alongside the browser actions, and pads timing so
+actions match the narration duration. If narration text changes, the
+audio is automatically regenerated and the old file is deleted.
+
 ### Step 5 — Iterate
 
 The user may request changes. Common patterns:
@@ -157,7 +169,7 @@ The user may request changes. Common patterns:
 | User says | What to do |
 |-----------|-----------|
 | "Wrong button" | Run page-state, find correct element, update target |
-| "Too fast" / "too slow" | Adjust wait durations |
+| "Too fast" / "too slow" | Adjust wait durations, replay with `--audio` to check timing |
 | "Change narration to ..." | Edit narration field |
 | "Add a step showing X" | Insert new segment, author its actions |
 | "Remove that step" | Delete the segment from YAML |

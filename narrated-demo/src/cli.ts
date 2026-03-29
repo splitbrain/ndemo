@@ -88,10 +88,12 @@ program
   .option("--segment <id>", "Play just this segment")
   .option("--from <id>", "Play from this segment")
   .option("--to <id>", "Stop after this segment")
+  .option("--audio", "Play TTS narration audio alongside actions")
   .action(async (playbook: string, options: {
     segment?: string;
     from?: string;
     to?: string;
+    audio?: boolean;
   }) => {
     try {
       await play(playbook, options);
