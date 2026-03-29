@@ -63,7 +63,21 @@ Create the directory and YAML file:
 # demo/my-feature/my-feature.yaml
 app:
   url: https://the-app-url.dev
-  # Optional: viewport, scale, zoom, colorScheme, setup
+  # Optional: viewport, scale, zoom, colorScheme
+  setup:
+    # Shell commands for file operations
+    - run: cp fixtures/original.txt data/page.txt
+    - run: rm -f data/cache/*.tmp
+    # Browser actions with conditions (only run if condition is met)
+    - type: click
+      target: { role: button, name: "Login" }
+      if:
+        visible: ".login-form"
+    - type: type
+      target: { role: textbox, name: "Username" }
+      text: admin
+      if:
+        visible: ".login-form"
 
 segments:
   - id: short-kebab-id
@@ -201,6 +215,49 @@ ${CLAUDE_SKILL_DIR}/ndemo render /absolute/path/to/demo/my-demo/my-demo.yaml
 ```
 
 This produces the final mp4 with TTS narration.
+
+## Setup Steps Reference
+
+Setup steps run before the demo starts (on `open`, `reset`, `play`,
+and `render`). They can be shell commands or browser actions.
+
+**Shell commands** — use `run` for file operations:
+```yaml
+setup:
+  - run: cp fixtures/original.txt data/page.txt
+  - run: rm -f data/cache/*.tmp
+  - run: ./scripts/reset-db.sh
+```
+
+**Browser actions** — same syntax as segment actions:
+```yaml
+setup:
+  - type: click
+    target: { role: button, name: "Login" }
+  - type: type
+    target: { role: textbox, name: "Username" }
+    text: admin
+```
+
+**Conditional steps** — add `if` to skip when condition is not met:
+```yaml
+setup:
+  # Only login if not already logged in
+  - type: click
+    target: { role: link, name: "Sign in" }
+    if:
+      hidden: ".user-menu"      # skip if user menu is visible
+  # Only run on a specific page
+  - type: click
+    target: { role: button, name: "Reset" }
+    if:
+      url: "**/admin/settings"  # skip if not on this page
+```
+
+Condition fields:
+- `visible: "<selector>"` — step runs only if selector matches visible elements
+- `hidden: "<selector>"` — step runs only if selector matches no visible elements
+- `url: "<pattern>"` — step runs only if current URL matches (`**` = any path)
 
 ## Action Types Reference
 

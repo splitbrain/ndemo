@@ -142,9 +142,12 @@ app:
   scale: 2                          # device scale factor
   zoom: 1.25                        # CSS zoom
   colorScheme: light                # light or dark
-  setup:                            # optional actions to run on load
-    - type: click
-      target: { role: button, name: "Accept cookies" }
+  setup:                            # optional steps to run on load
+    - run: cp fixtures/page.txt data/ # shell commands for file ops
+    - type: click                     # browser actions
+      target: { role: button, name: "Login" }
+      if:                             # conditional (skip if not met)
+        visible: ".login-form"
 
 tts:                                # optional, defaults shown
   provider: openai

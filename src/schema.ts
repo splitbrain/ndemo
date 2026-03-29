@@ -37,9 +37,20 @@ const DoneConditionSchema = z.object({
   "Done condition needs at least one field"
 );
 
+// ─── Condition (for setup if checks) ─────────────────
+
+const ConditionSchema = z.object({
+  visible: z.string().optional(),
+  hidden: z.string().optional(),
+  url: z.string().optional(),
+}).refine(
+  c => Object.values(c).some(Boolean),
+  "Condition needs at least one field"
+);
+
 // ─── Action ──────────────────────────────────────────
 
-const ActionSchema = z.object({
+const ActionBaseSchema = z.object({
   type: z.enum([
     "click", "type", "hover", "scroll",
     "wait", "select", "press"
@@ -51,11 +62,30 @@ const ActionSchema = z.object({
   duration: z.number().optional(),
   option: z.string().optional(),
   done: DoneConditionSchema.optional(),
-}).refine(action => {
+});
+
+const actionRefine = (action: { type: string; target?: unknown }) => {
   if (action.type === "wait") return true;
   if (action.type === "press") return true;
   return action.target !== undefined;
-}, "Non-wait/press actions require a target");
+};
+const actionRefineMsg = "Non-wait/press actions require a target";
+
+const ActionSchema = ActionBaseSchema.refine(actionRefine, actionRefineMsg);
+
+// ─── Setup Step ──────────────────────────────────────
+
+const SetupStepSchema = z.union([
+  // Shell command
+  z.object({
+    run: z.string().min(1),
+    if: ConditionSchema.optional(),
+  }),
+  // Browser action with optional condition
+  ActionBaseSchema.extend({
+    if: ConditionSchema.optional(),
+  }).refine(actionRefine, actionRefineMsg),
+]);
 
 // ─── Segment ─────────────────────────────────────────
 
@@ -83,7 +113,7 @@ const PlaybookSchema = z.object({
     scale: z.number().positive().default(2),
     zoom: z.number().positive().default(1.25),
     colorScheme: z.enum(["light", "dark"]).default("light"),
-    setup: z.array(ActionSchema).optional(),
+    setup: z.array(SetupStepSchema).optional(),
   }),
   tts: z.object({
     provider: z.enum(["openai", "elevenlabs"]).default("openai"),
@@ -102,11 +132,15 @@ type Segment = z.infer<typeof SegmentSchema>;
 type Action = z.infer<typeof ActionSchema>;
 type Target = z.infer<typeof TargetSchema>;
 type DoneCondition = z.infer<typeof DoneConditionSchema>;
+type Condition = z.infer<typeof ConditionSchema>;
+type SetupStep = z.infer<typeof SetupStepSchema>;
 
 export {
   PlaybookSchema, SegmentSchema, ActionSchema,
-  TargetSchema, DoneConditionSchema,
+  TargetSchema, DoneConditionSchema, ConditionSchema,
+  SetupStepSchema,
 };
 export type {
   Playbook, Segment, Action, Target, DoneCondition,
+  Condition, SetupStep,
 };

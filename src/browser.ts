@@ -4,7 +4,7 @@ import { spawn, execSync } from "node:child_process";
 import { chromium } from "playwright";
 import type { Browser, Page } from "playwright";
 import { loadPlaybook } from "./playbook-io.js";
-import { executeAction } from "./executor.js";
+import { executeSetup } from "./setup.js";
 import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -189,9 +189,7 @@ async function reset(): Promise<void> {
   );
 
   if (playbook.app.setup) {
-    for (const action of playbook.app.setup) {
-      await executeAction(page, action);
-    }
+    await executeSetup(page, playbook.app.setup);
   }
 
   console.log(`Reset to ${playbook.app.url}`);

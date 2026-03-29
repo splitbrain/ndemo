@@ -2,7 +2,8 @@ import path from "node:path";
 import { execa } from "execa";
 import { connect } from "./browser.js";
 import { loadPlaybook } from "./playbook-io.js";
-import { executeAction, executeSegment, runSegment } from "./executor.js";
+import { executeSegment, runSegment } from "./executor.js";
+import { executeSetup } from "./setup.js";
 import { ensureAudio } from "./tts.js";
 import type { Action } from "./schema.js";
 
@@ -57,9 +58,7 @@ async function play(
     playbook.app.zoom
   );
   if (playbook.app.setup) {
-    for (const action of playbook.app.setup) {
-      await executeAction(page, action);
-    }
+    await executeSetup(page, playbook.app.setup);
   }
 
   // Execute pre-target segments silently

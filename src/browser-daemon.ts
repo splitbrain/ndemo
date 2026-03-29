@@ -1,6 +1,6 @@
 import { chromium } from "playwright";
 import { loadPlaybook } from "./playbook-io.js";
-import { executeAction } from "./executor.js";
+import { executeSetup } from "./setup.js";
 import net from "node:net";
 
 async function findFreePort(): Promise<number> {
@@ -76,11 +76,9 @@ async function main() {
     playbook.app.zoom
   );
 
-  // Execute setup actions if any
+  // Execute setup steps if any
   if (playbook.app.setup) {
-    for (const action of playbook.app.setup) {
-      await executeAction(page, action);
-    }
+    await executeSetup(page, playbook.app.setup);
   }
 
   // Print connection info to stdout (parent reads this)

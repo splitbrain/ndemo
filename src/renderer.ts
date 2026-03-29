@@ -2,7 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
 import { loadPlaybook, savePlaybook } from "./playbook-io.js";
-import { executeAction, runSegment } from "./executor.js";
+import { runSegment } from "./executor.js";
+import { executeSetup } from "./setup.js";
 import { ensureAudio } from "./tts.js";
 import { mergeAudioVideo } from "./merger.js";
 
@@ -80,9 +81,7 @@ async function render(
   );
 
   if (playbook.app.setup) {
-    for (const action of playbook.app.setup) {
-      await executeAction(page, action);
-    }
+    await executeSetup(page, playbook.app.setup);
   }
 
   // Record segments
