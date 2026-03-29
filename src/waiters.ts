@@ -8,17 +8,18 @@ async function waitForDone(
   done: DoneCondition,
   timeout = DEFAULT_TIMEOUT
 ): Promise<void> {
+  const t = done.timeout ?? timeout;
   const promises: Promise<unknown>[] = [];
 
   if (done.visible)
     promises.push(
       page.locator(done.visible)
-        .waitFor({ state: "visible", timeout })
+        .waitFor({ state: "visible", timeout: t })
     );
   if (done.hidden)
     promises.push(
       page.locator(done.hidden)
-        .waitFor({ state: "hidden", timeout })
+        .waitFor({ state: "hidden", timeout: t })
     );
   if (done.networkIdle)
     promises.push(
@@ -26,7 +27,7 @@ async function waitForDone(
     );
   if (done.url)
     promises.push(
-      page.waitForURL(done.url, { timeout })
+      page.waitForURL(done.url, { timeout: t })
     );
   if (done.stable)
     promises.push(
@@ -36,14 +37,14 @@ async function waitForDone(
     promises.push(
       page.locator(done.text.selector)
         .filter({ hasText: done.text.has })
-        .waitFor({ state: "visible", timeout })
+        .waitFor({ state: "visible", timeout: t })
     );
   if (done.attribute)
     promises.push(
       page.locator(
         `${done.attribute.selector}` +
         `[${done.attribute.name}="${done.attribute.value}"]`
-      ).waitFor({ state: "visible", timeout })
+      ).waitFor({ state: "visible", timeout: t })
     );
 
   if (promises.length > 0) {

@@ -32,6 +32,7 @@ const DoneConditionSchema = z.object({
   networkIdle: z.boolean().optional(),
   stable: z.number().optional(),
   url: z.string().optional(),
+  timeout: z.number().positive().optional(),
 }).refine(
   d => Object.values(d).some(Boolean),
   "Done condition needs at least one field"
