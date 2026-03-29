@@ -2,9 +2,9 @@ import path from "node:path";
 import { execa } from "execa";
 import { connect } from "./browser.js";
 import { loadPlaybook } from "./playbook-io.js";
-import { executeAction, executeSegment } from "./executor.js";
+import { executeAction, executeSegment, runSegment } from "./executor.js";
 import { ensureAudio } from "./tts.js";
-import type { Action, Playbook, Segment } from "./schema.js";
+import type { Action } from "./schema.js";
 
 async function play(
   playbookPath: string,
@@ -88,50 +88,30 @@ async function play(
       continue;
     }
 
-    const timing = seg.timing ?? "after";
-
-    // Start audio playback if --audio
-    let audioProcess: ReturnType<typeof execa> | null = null;
-    if (audio) {
-      audioProcess = execa("ffplay", [
-        "-nodisp", "-autoexit", "-loglevel", "quiet",
-        audio.audioPath,
-      ]);
-      audioProcess.catch(() => {});
-
-      // "after" timing: wait for narration to finish before running actions
-      if (timing === "after" && seg.actions.length > 0) {
-        await page.waitForTimeout(audio.durationMs);
-        try { await audioProcess; } catch {}
-        audioProcess = null; // already done
-      }
-    }
-
-    const segmentStart = Date.now();
-
-    for (let j = 0; j < seg.actions.length; j++) {
-      const action = seg.actions[j];
-      const desc = describeAction(action);
-      process.stdout.write(`  ${desc}...`);
-
-      try {
-        await executeAction(page, action, { cursor: true });
+    const result = await runSegment(page, seg, {
+      cursor: true,
+      audioDurationMs: audio?.durationMs,
+      playAudio: audio ? () => {
+        const proc = execa("ffplay", [
+          "-nodisp", "-autoexit", "-loglevel", "quiet",
+          audio.audioPath,
+        ]);
+        const promise = proc.catch(() => {});
+        return { kill: () => proc.kill(), promise };
+      } : undefined,
+      onActionStart: (action) => {
+        process.stdout.write(`  ${describeAction(action)}...`);
+      },
+      onActionDone: () => {
         console.log(" ✓");
-      } catch (err) {
+      },
+      onActionError: (err) => {
         console.log(" ✗");
-        if (audioProcess) audioProcess.kill();
-        throw new Error(`Failed at segment "${seg.id}", action ${j}: ${err}`);
-      }
-    }
+      },
+    });
 
-    // For "parallel" timing, wait for audio to finish after actions complete
-    if (audioProcess) {
-      const elapsed = Date.now() - segmentStart;
-      const remaining = audio!.durationMs - elapsed;
-      if (remaining > 0) {
-        await page.waitForTimeout(remaining);
-      }
-      try { await audioProcess; } catch {}
+    if (!result.ok) {
+      throw new Error(`Failed at segment "${seg.id}", action ${result.actionIndex}: ${result.error}`);
     }
   }
 

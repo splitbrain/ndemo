@@ -31,8 +31,6 @@ async function executeAction(
 
   switch (action.type) {
     case "click":
-      // Click effect BEFORE the click — the click may trigger navigation
-      // which destroys the DOM, so the effect must be visible first.
       if (showCursor) await clickEffect(page);
       await locator.click();
       break;
@@ -87,4 +85,85 @@ async function executeSegment(
   return { ok: true };
 }
 
-export { executeAction, executeSegment };
+/**
+ * Shared orchestration for playing a segment with optional audio.
+ * Used by both `play` and `render`.
+ *
+ * - Handles timing (after vs parallel)
+ * - Optionally plays audio via a playAudio callback
+ * - Waits for audio duration to ensure segment fills the narration
+ * - Returns the actual wall-clock duration of the segment
+ */
+interface RunSegmentOptions {
+  cursor?: boolean;
+  audioDurationMs?: number;
+  playAudio?: () => { kill: () => void; promise: Promise<unknown> };
+  onActionStart?: (action: Action, index: number) => void;
+  onActionDone?: (action: Action, index: number) => void;
+  onActionError?: (err: unknown, action: Action, index: number) => void;
+}
+
+async function runSegment(
+  page: Page,
+  segment: Segment,
+  options: RunSegmentOptions = {}
+): Promise<{ ok: boolean; durationMs: number; error?: string; actionIndex?: number }> {
+  const timing = segment.timing ?? "after";
+  const audioDurationMs = options.audioDurationMs ?? 0;
+  const segmentStart = Date.now();
+
+  // Start audio
+  let audioHandle: { kill: () => void; promise: Promise<unknown> } | null = null;
+  if (options.playAudio) {
+    audioHandle = options.playAudio();
+  }
+
+  // "after" timing: wait for narration to finish before running actions
+  if (timing === "after" && audioDurationMs > 0 && segment.actions.length > 0) {
+    await page.waitForTimeout(audioDurationMs);
+    if (audioHandle) {
+      try { await audioHandle.promise; } catch {}
+      audioHandle = null;
+    }
+  }
+
+  // Execute actions
+  for (let i = 0; i < segment.actions.length; i++) {
+    const action = segment.actions[i];
+    options.onActionStart?.(action, i);
+
+    try {
+      await executeAction(page, action, { cursor: options.cursor });
+      options.onActionDone?.(action, i);
+    } catch (err) {
+      options.onActionError?.(err, action, i);
+      if (audioHandle) audioHandle.kill();
+      return {
+        ok: false,
+        durationMs: Date.now() - segmentStart,
+        error: String(err),
+        actionIndex: i,
+      };
+    }
+  }
+
+  // Pad to audio duration
+  const elapsed = Date.now() - segmentStart;
+  const remaining = audioDurationMs - elapsed;
+  if (remaining > 0) {
+    await page.waitForTimeout(remaining);
+  }
+
+  // Wait for audio to finish
+  if (audioHandle) {
+    try { await audioHandle.promise; } catch {}
+  }
+
+  return {
+    ok: true,
+    durationMs: Date.now() - segmentStart,
+  };
+}
+
+export { executeAction, executeSegment, runSegment };
+export type { SegmentResult, RunSegmentOptions };

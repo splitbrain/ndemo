@@ -2,10 +2,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
 import { loadPlaybook, savePlaybook } from "./playbook-io.js";
-import { executeAction } from "./executor.js";
+import { executeAction, runSegment } from "./executor.js";
 import { ensureAudio } from "./tts.js";
 import { mergeAudioVideo } from "./merger.js";
-import type { Playbook } from "./schema.js";
 
 async function render(
   playbookPath: string,
@@ -86,48 +85,37 @@ async function render(
     }
   }
 
-  // Record segment timings for merge
+  // Record segments
   const segmentTimings: Array<{ id: string; durationMs: number; audioDurationMs: number }> = [];
 
-  for (const segment of playbook.segments) {
+  for (let i = 0; i < playbook.segments.length; i++) {
+    const segment = playbook.segments[i];
     process.stdout.write(`  ${segment.id}...`);
-    const segmentStart = Date.now();
-    const timing = segment.timing ?? "after";
-    const audioDuration = segment.audioDuration!;
 
-    // "after" timing: wait for narration duration before running actions
-    if (timing === "after" && segment.actions.length > 0) {
-      await page.waitForTimeout(audioDuration);
-    }
-
-    for (let i = 0; i < segment.actions.length; i++) {
-      try {
-        await executeAction(page, segment.actions[i], { cursor: true });
-      } catch (err) {
+    const result = await runSegment(page, segment, {
+      cursor: true,
+      audioDurationMs: segment.audioDuration!,
+      onActionError: async (err, action, actionIndex) => {
         await page.screenshot({
           path: path.join(outputDir, `error-${segment.id}.png`),
         });
-        await context.close();
-        await browser.close();
-        throw new Error(
-          `Render failed at segment "${segment.id}", action ${i}: ${err}`
-        );
-      }
+      },
+    });
+
+    if (!result.ok) {
+      await context.close();
+      await browser.close();
+      throw new Error(
+        `Render failed at segment "${segment.id}", action ${result.actionIndex}: ${result.error}`
+      );
     }
 
-    const elapsed = Date.now() - segmentStart;
-    const remaining = audioDuration - elapsed;
-    if (remaining > 0) {
-      await page.waitForTimeout(remaining);
-    }
-
-    const actualDuration = Date.now() - segmentStart;
     segmentTimings.push({
       id: segment.id,
-      durationMs: actualDuration,
-      audioDurationMs: audioDuration,
+      durationMs: result.durationMs,
+      audioDurationMs: segment.audioDuration!,
     });
-    console.log(` ${(actualDuration / 1000).toFixed(1)}s`);
+    console.log(` ${(result.durationMs / 1000).toFixed(1)}s`);
   }
 
   // Close context to finalize video
