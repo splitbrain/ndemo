@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
+import { execa } from "execa";
 import { loadPlaybook, savePlaybook } from "./playbook-io.js";
 import { runSegment } from "./executor.js";
 import { executeSetup } from "./setup.js";
@@ -49,11 +50,10 @@ async function render(
   savePlaybook(playbookPath, playbook);
   console.log("  Audio durations saved to playbook.");
 
-  // Step 2: Headless replay with video recording
+  // Step 2: Headless replay with CDP screencast
   console.log("\nRecording video...");
-  // Playwright needs a temp dir for its auto-named webm; we rename it after.
-  const videoTmpDir = path.join(outputDir, ".video-tmp");
-  fs.mkdirSync(videoTmpDir, { recursive: true });
+  const framesDir = path.join(outputDir, ".frames");
+  fs.mkdirSync(framesDir, { recursive: true });
 
   // Use a physically larger viewport instead of deviceScaleFactor to get
   // high-resolution video. Playwright's video recorder captures at logical
@@ -94,7 +94,7 @@ async function render(
     await setupContext.close();
   }
 
-  // Create the recording context (with saved state from setup if any)
+  // Create context without recordVideo — we use CDP screencast instead
   const context = await browser.newContext({
     viewport: {
       width: scaledWidth,
@@ -104,13 +104,6 @@ async function render(
     colorScheme: playbook.app.colorScheme,
     locale: "en-US",
     storageState,
-    recordVideo: {
-      dir: videoTmpDir,
-      size: {
-        width: scaledWidth,
-        height: scaledHeight,
-      },
-    },
   });
 
   const page = await context.newPage();
@@ -127,6 +120,37 @@ async function render(
     (z: number) => { document.body.style.zoom = String(z); },
     renderZoom
   );
+
+  // Start CDP screencast for high-quality frame capture
+  const cdp = await context.newCDPSession(page);
+
+  interface CapturedFrame {
+    filePath: string;
+    timestamp: number;
+  }
+  const frames: CapturedFrame[] = [];
+  let frameIndex = 0;
+  let pendingWrites = 0;
+
+  cdp.on("Page.screencastFrame", async (params) => {
+    const filePath = path.join(framesDir, `frame-${String(frameIndex).padStart(7, "0")}.jpeg`);
+    const timestamp = params.metadata.timestamp ?? (Date.now() / 1000);
+    frameIndex++;
+    pendingWrites++;
+    fs.writeFileSync(filePath, Buffer.from(params.data, "base64"));
+    frames.push({ filePath, timestamp });
+    pendingWrites--;
+
+    await cdp.send("Page.screencastFrameAck", { sessionId: params.sessionId });
+  });
+
+  await cdp.send("Page.startScreencast", {
+    format: "jpeg",
+    quality: 95,
+    maxWidth: scaledWidth,
+    maxHeight: scaledHeight,
+    everyNthFrame: 1,
+  });
 
   // Record segments
   const segmentTimings: Array<{ id: string; durationMs: number; audioDurationMs: number }> = [];
@@ -146,6 +170,8 @@ async function render(
     });
 
     if (!result.ok) {
+      await cdp.send("Page.stopScreencast");
+      await cdp.detach();
       await context.close();
       await browser.close();
       throw new Error(
@@ -161,20 +187,50 @@ async function render(
     console.log(` ${(result.durationMs / 1000).toFixed(1)}s`);
   }
 
-  // Close context to finalize video
-  const videoObj = page.video();
+  // Stop screencast and wait for pending frame writes
+  await cdp.send("Page.stopScreencast");
+  while (pendingWrites > 0) {
+    await new Promise(r => setTimeout(r, 50));
+  }
+  await cdp.detach();
   await context.close();
   await browser.close();
 
-  const videoTmpPath = videoObj ? await videoObj.path() : undefined;
-  if (!videoTmpPath) {
-    throw new Error("No video recorded");
+  if (frames.length === 0) {
+    throw new Error("No frames captured");
   }
 
-  // Move webm to output dir with playbook name
-  const videoPath = path.join(outputDir, `${playbookName}.webm`);
-  fs.renameSync(videoTmpPath, videoPath);
-  fs.rmSync(videoTmpDir, { recursive: true, force: true });
+  console.log(`  Captured ${frames.length} frames`);
+
+  // Assemble frames into video using ffmpeg concat demuxer
+  const concatFilePath = path.join(framesDir, "frames.txt");
+  let concatContent = "";
+  for (let i = 0; i < frames.length; i++) {
+    const duration = i < frames.length - 1
+      ? frames[i + 1].timestamp - frames[i].timestamp
+      : 1 / 30; // last frame: hold for one frame at 30fps
+    concatContent += `file '${path.resolve(frames[i].filePath)}'\n`;
+    concatContent += `duration ${Math.max(duration, 0.001).toFixed(6)}\n`;
+  }
+  // concat demuxer needs the last file repeated without duration
+  concatContent += `file '${path.resolve(frames[frames.length - 1].filePath)}'\n`;
+  fs.writeFileSync(concatFilePath, concatContent);
+
+  const videoPath = path.join(outputDir, `${playbookName}-video.mp4`);
+  await execa("ffmpeg", [
+    "-y",
+    "-f", "concat",
+    "-safe", "0",
+    "-i", concatFilePath,
+    "-c:v", "libx264",
+    "-crf", "17",
+    "-preset", "slow",
+    "-pix_fmt", "yuv420p",
+    videoPath,
+  ]);
+
+  // Clean up frames
+  fs.rmSync(framesDir, { recursive: true, force: true });
 
   // Step 3: Merge
   console.log("\nMerging audio and video...");
@@ -191,6 +247,11 @@ async function render(
     outputPath: finalOutput,
     outputDir,
   });
+
+  // Clean up intermediate video
+  if (videoPath !== finalOutput) {
+    try { fs.unlinkSync(videoPath); } catch {}
+  }
 
   // Summary
   const stats = fs.statSync(finalOutput);

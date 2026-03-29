@@ -63,14 +63,12 @@ async function mergeAudioVideo(options: MergeOptions): Promise<void> {
     combinedAudioPath,
   ]);
 
-  // Merge audio + video
+  // Merge audio + video (video is already H.264, just mux)
   await execa("ffmpeg", [
     "-y",
     "-i", videoPath,
     "-i", combinedAudioPath,
-    "-c:v", "libx264",
-    "-crf", "18",
-    "-preset", "slow",
+    "-c:v", "copy",
     "-c:a", "aac",
     "-b:a", "192k",
     "-movflags", "+faststart",
