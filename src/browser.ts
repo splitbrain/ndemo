@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { spawn } from "node:child_process";
+import { spawn, execSync } from "node:child_process";
 import { chromium } from "playwright";
 import type { Browser, Page } from "playwright";
 import { loadPlaybook } from "./playbook-io.js";
@@ -24,20 +24,44 @@ interface BrowserConnection {
   page: Page;
 }
 
+/**
+ * Kill a process and all its children.
+ */
+function killProcessTree(pid: number): void {
+  try {
+    // Kill the entire process group (negative PID)
+    process.kill(-pid, "SIGKILL");
+  } catch {
+    // Process group kill failed, try individual kill
+    try {
+      process.kill(pid, "SIGKILL");
+    } catch {
+      // Already dead
+    }
+  }
+}
+
+function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function open(playbookPath: string): Promise<void> {
   const absPlaybook = path.resolve(playbookPath);
 
   // Check if already running
   if (fs.existsSync(INFO_PATH)) {
     const existing = JSON.parse(fs.readFileSync(INFO_PATH, "utf-8"));
-    try {
-      process.kill(existing.pid, 0);
+    if (isProcessAlive(existing.pid)) {
       console.log(`Browser daemon already running (PID ${existing.pid}). Use \`ndemo close\` first.`);
       return;
-    } catch {
-      // Dead process, clean up
-      fs.rmSync(INFO_DIR, { recursive: true });
     }
+    // Dead process, clean up
+    fs.rmSync(INFO_DIR, { recursive: true });
   }
 
   const daemonScript = path.join(__dirname, "browser-daemon.js");
@@ -113,10 +137,7 @@ async function connect(): Promise<BrowserConnection> {
 
   const info: BrowserInfo = JSON.parse(fs.readFileSync(INFO_PATH, "utf-8"));
 
-  // Verify daemon is still alive
-  try {
-    process.kill(info.pid, 0);
-  } catch {
+  if (!isProcessAlive(info.pid)) {
     fs.rmSync(INFO_DIR, { recursive: true });
     throw new Error(
       "Browser daemon is dead. Run `ndemo open <playbook.yaml>` again."
@@ -140,15 +161,16 @@ async function close(): Promise<void> {
 
   const info: BrowserInfo = JSON.parse(fs.readFileSync(INFO_PATH, "utf-8"));
 
-  try {
-    const browser = await chromium.connectOverCDP(info.wsEndpoint);
-    await browser.close();
-  } catch {
-    try {
-      process.kill(info.pid, "SIGTERM");
-    } catch {
-      // Already dead
-    }
+  // Kill the daemon process tree — this takes down both the node
+  // daemon and the Chromium process it spawned.
+  killProcessTree(info.pid);
+
+  // Wait briefly for processes to die, then verify
+  await new Promise(r => setTimeout(r, 500));
+
+  if (isProcessAlive(info.pid)) {
+    // Last resort: SIGKILL directly
+    try { process.kill(info.pid, "SIGKILL"); } catch {}
   }
 
   fs.rmSync(INFO_DIR, { recursive: true });
