@@ -2,7 +2,7 @@
 
 A CLI toolkit and [Claude Code skill](https://docs.anthropic.com/en/docs/claude-code/skills) for creating narrated demo videos of web applications. You describe what to show, Claude Code drives the browser, and the toolkit renders a polished mp4 with voiceover.
 
-Claude Code is the agent. The toolkit provides browser management, page inspection, segment playback, and video rendering as CLI commands. The skill file (`narrated-demo.md`) teaches Claude Code how to use them.
+Claude Code is the agent. The toolkit provides browser management, page inspection, segment playback, and video rendering as CLI commands. The skill file (`SKILL.md`) teaches Claude Code how to use them.
 
 ## How it works
 
@@ -26,6 +26,8 @@ You: "Create a demo showing the new dashboard filters"
 
 ## Installation
 
+### As a remote skill
+
 Add this repo as a skill in your project's `.claude/settings.json`:
 
 ```json
@@ -36,7 +38,28 @@ Add this repo as a skill in your project's `.claude/settings.json`:
 }
 ```
 
-That's it. The skill file tells Claude Code how to build the toolkit and install Playwright on first use. Everything runs from within the skill's own directory — nothing gets copied into your project.
+### As a local skill
+
+Clone directly into a Claude Code skills directory:
+
+```bash
+# Project-level (this project only)
+git clone https://github.com/splitbrain/ndemo .claude/skills/narrated-demo
+
+# Personal (available in all projects)
+git clone https://github.com/splitbrain/ndemo ~/.claude/skills/narrated-demo
+```
+
+This is useful during development — you can edit the skill files and
+the CLI source directly, and Claude Code picks up changes immediately.
+
+You can also symlink an existing clone:
+
+```bash
+ln -s /path/to/your/ndemo ~/.claude/skills/narrated-demo
+```
+
+Either way, the skill file tells Claude Code how to build the toolkit and install Playwright on first use. Everything runs from within the skill's own directory — nothing gets copied into your project.
 
 ## Quick start
 
@@ -195,7 +218,7 @@ done:
 
 ```
 Claude Code (the agent)
-  ├── reads narrated-demo.md (skill file) for workflow
+  ├── reads SKILL.md (skill file) for workflow
   ├── reads the web app's source for context
   ├── edits playbook YAML
   └── runs ndemo CLI commands
