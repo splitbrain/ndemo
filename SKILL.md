@@ -4,19 +4,24 @@ Create narrated screen-recording demo videos of web applications.
 
 ## Setup
 
-On first use, build the toolkit if it hasn't been built yet:
+On first use, you MUST build the toolkit before running any `ndemo` command.
+Check if `${CLAUDE_SKILL_DIR}/dist/cli.js` exists. If not, run:
 
 ```bash
-cd ${CLAUDE_SKILL_DIR} &&npm install && npm run build
+cd ${CLAUDE_SKILL_DIR} && npm install && npm run build
 ```
 
 Then install the Playwright browser if needed:
 
 ```bash
-cd ${CLAUDE_SKILL_DIR} &&npx playwright install chromium
+cd ${CLAUDE_SKILL_DIR} && npx playwright install chromium
 ```
 
-Run `npx ndemo doctor` from that directory to verify everything is ready.
+Verify the setup:
+
+```bash
+cd ${CLAUDE_SKILL_DIR} && npx ndemo doctor
+```
 
 ## Commands
 
