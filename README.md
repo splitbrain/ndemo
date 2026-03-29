@@ -1,4 +1,4 @@
-# narrated-demo
+# ndemo
 
 A CLI toolkit and [Claude Code skill](https://docs.anthropic.com/en/docs/claude-code/skills) for creating narrated demo videos of web applications. You describe what to show, Claude Code drives the browser, and the toolkit renders a polished mp4 with voiceover.
 
@@ -44,10 +44,10 @@ Clone directly into a Claude Code skills directory:
 
 ```bash
 # Project-level (this project only)
-git clone https://github.com/splitbrain/ndemo .claude/skills/narrated-demo
+git clone https://github.com/splitbrain/ndemo .claude/skills/ndemo
 
 # Personal (available in all projects)
-git clone https://github.com/splitbrain/ndemo ~/.claude/skills/narrated-demo
+git clone https://github.com/splitbrain/ndemo ~/.claude/skills/ndemo
 ```
 
 This is useful during development — you can edit the skill files and
@@ -56,7 +56,7 @@ the CLI source directly, and Claude Code picks up changes immediately.
 You can also symlink an existing clone:
 
 ```bash
-ln -s /path/to/your/ndemo ~/.claude/skills/narrated-demo
+ln -s /path/to/your/ndemo ~/.claude/skills/ndemo
 ```
 
 Either way, the skill file tells Claude Code how to build the toolkit and install Playwright on first use. Everything runs from within the skill's own directory — nothing gets copied into your project.
@@ -112,7 +112,7 @@ segments:
 The skill file teaches Claude Code to run these commands automatically, but you can also run them directly:
 
 ```bash
-cd <skill-directory>/narrated-demo
+cd <skill-directory>/ndemo
 npx ndemo <command>
 ```
 
