@@ -10,17 +10,17 @@
     "dev": "tsc --watch"
   },
   "dependencies": {
-    "playwright": "^1.48",
-    "openai": "^4.60",
+    "chalk": "^5",
     "commander": "^12",
-    "zod": "^3.23",
-    "yaml": "^2.5",
     "execa": "^9",
-    "chalk": "^5"
+    "openai": "^6.33.0",
+    "playwright": "^1.48",
+    "yaml": "^2.5",
+    "zod": "^3.23"
   },
   "devDependencies": {
-    "typescript": "^5.6",
-    "@types/node": "^22"
+    "@types/node": "^22",
+    "typescript": "^5.6"
   },
   "engines": {
     "node": ">=20"
