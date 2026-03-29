@@ -45,10 +45,12 @@ async function executeSetup(
     }
 
     if (isRunStep(step)) {
-      console.log(`  run: ${step.run}`);
+      process.stderr.write(`  run: ${step.run}\n`);
       try {
         await execa("sh", ["-c", step.run], {
-          stdio: "inherit",
+          stdout: process.stderr,
+          stderr: process.stderr,
+          stdin: "ignore",
           cwd: options.cwd,
         });
       } catch (err: any) {
