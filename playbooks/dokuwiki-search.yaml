@@ -4,6 +4,8 @@ app:
   scale: 1
   zoom: 1
   setup:
+    - run: echo "ndemo setup started at $(date)" > /tmp/ndemo-test.log
+    - run: cp playbooks/dokuwiki-search.yaml /tmp/ndemo-test-playbook.yaml
     - type: click
       target: { role: button, name: "Yes, I'm a real person." }
       if: { visible: "h1:has-text('Are you Human?')" }

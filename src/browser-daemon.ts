@@ -2,6 +2,8 @@ import { chromium } from "playwright";
 import { loadPlaybook } from "./playbook-io.js";
 import { executeSetup } from "./setup.js";
 import net from "node:net";
+import fs from "node:fs";
+import path from "node:path";
 
 async function findFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -72,6 +74,16 @@ async function main() {
   // unblocks immediately — page load and setup can take arbitrarily long.
   const cdpEndpoint = `http://localhost:${debugPort}`;
   console.log(JSON.stringify({ wsEndpoint: cdpEndpoint }));
+
+  // Reopen stdout/stderr to a log file so the daemon doesn't crash with
+  // EPIPE when the parent exits and closes its end of the pipes.
+  // Errors during navigation/setup will be visible in .ndemo/daemon.log.
+  const logPath = path.join(".ndemo", "daemon.log");
+  fs.mkdirSync(".ndemo", { recursive: true });
+  fs.closeSync(1);
+  fs.closeSync(2);
+  fs.openSync(logPath, "w"); // becomes fd 1 (stdout)
+  fs.openSync(logPath, "w"); // becomes fd 2 (stderr)
 
   await page.goto(playbook.app.url, { waitUntil: "load" });
 
