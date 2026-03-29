@@ -79,8 +79,8 @@ async function ensureAudio(
       response_format: "mp3",
     });
 
-    const buffer = Buffer.from(await response.arrayBuffer());
-    fs.writeFileSync(audioPath, buffer);
+    const arrayBuffer = await response.arrayBuffer();
+    fs.writeFileSync(audioPath, new Uint8Array(arrayBuffer));
   } else {
     throw new Error(`TTS provider "${playbook.tts.provider}" not yet implemented`);
   }
