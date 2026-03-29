@@ -95,7 +95,7 @@ async function render(
 
     for (let i = 0; i < segment.actions.length; i++) {
       try {
-        await executeAction(page, segment.actions[i]);
+        await executeAction(page, segment.actions[i], { cursor: true });
       } catch (err) {
         await page.screenshot({
           path: path.join(outputDir, `error-${segment.id}.png`),

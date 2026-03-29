@@ -106,7 +106,7 @@ async function play(
       process.stdout.write(`  ${desc}...`);
 
       try {
-        await executeAction(page, action);
+        await executeAction(page, action, { cursor: true });
         console.log(" ✓");
       } catch (err) {
         console.log(" ✗");
