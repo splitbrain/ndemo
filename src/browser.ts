@@ -182,7 +182,7 @@ async function reset(): Promise<void> {
   const info: BrowserInfo = JSON.parse(fs.readFileSync(INFO_PATH, "utf-8"));
   const playbook = loadPlaybook(info.playbookPath);
 
-  await page.goto(playbook.app.url, { waitUntil: "networkidle" });
+  await page.goto(playbook.app.url, { waitUntil: "load" });
   await page.evaluate(
     (z: number) => { document.body.style.zoom = String(z); },
     playbook.app.zoom

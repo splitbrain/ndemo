@@ -74,7 +74,7 @@ async function render(
     });
   `);
 
-  await page.goto(playbook.app.url, { waitUntil: "networkidle" });
+  await page.goto(playbook.app.url, { waitUntil: "load" });
   await page.evaluate(
     (z: number) => { document.body.style.zoom = String(z); },
     playbook.app.zoom

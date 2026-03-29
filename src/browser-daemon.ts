@@ -68,7 +68,7 @@ async function main() {
     });
   `);
 
-  await page.goto(playbook.app.url, { waitUntil: "networkidle" });
+  await page.goto(playbook.app.url, { waitUntil: "load" });
 
   // Ensure zoom is applied
   await page.evaluate(
