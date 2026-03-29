@@ -73,10 +73,7 @@ async function play(
     }
     const result = await executeSegment(page, seg);
     if (!result.ok) {
-      console.error(
-        `Rewind failed at segment "${seg.id}": ${result.error}`
-      );
-      process.exit(1);
+      throw new Error(`Rewind failed at segment "${seg.id}": ${result.error}`);
     }
   }
 
@@ -116,12 +113,8 @@ async function play(
         console.log(" ✓");
       } catch (err) {
         console.log(" ✗");
-        console.error(`  Error: ${err}`);
-        console.error(
-          `  Failed at segment "${seg.id}", action ${j}`
-        );
         if (audioProcess) audioProcess.kill();
-        process.exit(1);
+        throw new Error(`Failed at segment "${seg.id}", action ${j}: ${err}`);
       }
     }
 

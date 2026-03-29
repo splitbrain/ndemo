@@ -6,9 +6,7 @@ import { connect } from "./browser.js";
 import { readPageState } from "./page-reader.js";
 import { play } from "./player.js";
 import { render } from "./renderer.js";
-import { loadPlaybook } from "./playbook-io.js";
 import { execSync } from "node:child_process";
-import fs from "node:fs";
 
 const program = new Command();
 
@@ -26,6 +24,7 @@ program
   .action(async (playbook: string) => {
     try {
       await open(playbook);
+      process.exit(0);
     } catch (err) {
       console.error(`Error: ${err}`);
       process.exit(1);
@@ -40,6 +39,7 @@ program
   .action(async () => {
     try {
       await close();
+      process.exit(0);
     } catch (err) {
       console.error(`Error: ${err}`);
       process.exit(1);
@@ -54,6 +54,7 @@ program
   .action(async () => {
     try {
       await reset();
+      process.exit(0);
     } catch (err) {
       console.error(`Error: ${err}`);
       process.exit(1);
@@ -73,6 +74,7 @@ program
         screenshot: options.screenshot,
       });
       console.log(output);
+      process.exit(0);
     } catch (err) {
       console.error(`Error: ${err}`);
       process.exit(1);
@@ -97,6 +99,7 @@ program
   }) => {
     try {
       await play(playbook, options);
+      process.exit(0);
     } catch (err) {
       console.error(`Error: ${err}`);
       process.exit(1);
@@ -113,6 +116,7 @@ program
   .action(async (playbook: string, options: { output?: string }) => {
     try {
       await render(playbook, options.output);
+      process.exit(0);
     } catch (err) {
       console.error(`Error: ${err}`);
       process.exit(1);
@@ -127,7 +131,6 @@ program
   .action(async () => {
     let allOk = true;
 
-    // Node version
     const nodeVersion = process.version;
     const nodeMajor = parseInt(nodeVersion.slice(1));
     if (nodeMajor >= 20) {
@@ -137,7 +140,6 @@ program
       allOk = false;
     }
 
-    // ffmpeg
     try {
       const ffmpegVersion = execSync("ffmpeg -version", { encoding: "utf-8" })
         .split("\n")[0]
@@ -148,7 +150,6 @@ program
       allOk = false;
     }
 
-    // ffprobe
     try {
       const ffprobeVersion = execSync("ffprobe -version", { encoding: "utf-8" })
         .split("\n")[0]
@@ -159,7 +160,6 @@ program
       allOk = false;
     }
 
-    // Playwright browsers
     try {
       const { chromium } = await import("playwright");
       const browser = await chromium.launch({ headless: true });
@@ -171,7 +171,6 @@ program
       allOk = false;
     }
 
-    // OPENAI_API_KEY
     if (process.env.OPENAI_API_KEY) {
       console.log("  ✓ OPENAI_API_KEY is set");
     } else {
@@ -179,7 +178,6 @@ program
       allOk = false;
     }
 
-    // ELEVENLABS_API_KEY (optional)
     if (process.env.ELEVENLABS_API_KEY) {
       console.log("  ✓ ELEVENLABS_API_KEY is set");
     } else {
