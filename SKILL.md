@@ -37,8 +37,10 @@ All commands are run via `${CLAUDE_SKILL_DIR}/ndemo`:
 | `${CLAUDE_SKILL_DIR}/ndemo play <playbook>` | Play all segments |
 | `${CLAUDE_SKILL_DIR}/ndemo play <playbook> --segment <id>` | Play one segment (rewinds first) |
 | `${CLAUDE_SKILL_DIR}/ndemo play <playbook> --from <id>` | Play from segment to end |
+| `${CLAUDE_SKILL_DIR}/ndemo play <playbook> --to <id>` | Stop after this segment |
 | `${CLAUDE_SKILL_DIR}/ndemo play <playbook> --audio` | Play with TTS narration audio |
 | `${CLAUDE_SKILL_DIR}/ndemo render <playbook>` | Full pipeline: TTS → replay → merge → mp4 |
+| `${CLAUDE_SKILL_DIR}/ndemo render <playbook> --output <path>` | Render to a specific output file |
 | `${CLAUDE_SKILL_DIR}/ndemo doctor` | Check dependencies |
 
 ## Workflow
@@ -73,12 +75,19 @@ needs to be in for the demo to work reliably and repeatably:
 will copy them back before each run so the demo always starts
 from a clean state.
 
-Create the directory and YAML file:
+Create the directory and YAML file. The full playbook schema supports
+these top-level sections:
 
 ```yaml
 # demo/edit-page/edit-page.yaml
 app:
   url: http://localhost:8080/wiki
+  viewport:                          # optional, default 1920x1080
+    width: 1920
+    height: 1080
+  scale: 2                           # device scale factor (default 2)
+  zoom: 1.25                         # CSS zoom level (default 1.25)
+  colorScheme: light                 # "light" or "dark" (default "light")
   setup:
     # Restore files modified during the demo
     - run: cp demo/edit-page/fixtures/page.txt data/pages/page.txt
@@ -106,10 +115,20 @@ app:
       done:
         visible: ".user-info"
 
+tts:                                   # optional TTS configuration
+  provider: openai                     # "openai" (default) or "elevenlabs"
+  voice: alloy                         # TTS voice name (default "alloy")
+  speed: 1.0                           # speech speed multiplier (default 1.0)
+
+recording:                             # optional recording settings
+  outputDir: "."                       # output directory relative to playbook (default ".")
+  fps: 30                              # video frame rate (default 30)
+
 segments:
   - id: intro
     narration: "Welcome to our wiki. Let's edit a page."
     intent: "show the wiki start page"
+    timing: after                      # "after" (default) or "parallel"
     actions:
       - type: wait
         duration: 2000
@@ -119,6 +138,10 @@ segments:
     intent: "click the edit button"
     actions: []
 ```
+
+**Segment timing** controls when actions run relative to narration:
+- `after` (default) — narration plays first, then actions execute
+- `parallel` — actions execute while narration plays
 
 Write all segments with narration and intent first. Leave actions
 as empty arrays. Use absolute paths when passing playbook paths
@@ -156,10 +179,17 @@ If page-state shows `[searchbox "Search reports" value=""]`:
 target: { role: searchbox, name: "Search reports" }
 ```
 
-If there's no clear role/name, use a CSS selector:
+Other target fields — use whichever best identifies the element:
 ```yaml
-target: { selector: "#my-element" }
+target: { selector: "#my-element" }        # CSS selector
+target: { testId: "submit-btn" }           # data-testid attribute
+target: { label: "Email" }                 # aria-label
+target: { placeholder: "Search..." }       # placeholder text
+target: { text: "Click me" }              # visible text content
 ```
+
+At least one target field is required. Multiple fields can be
+combined to narrow the match.
 
 **Tip:** The web app's source code is available in the project repo.
 Look at the component source for `data-testid` attributes,
@@ -180,6 +210,7 @@ done:
     selector: html
     name: data-theme
     value: dark
+  timeout: 10000                    # override default timeout (ms)
 ```
 
 **Every action that changes the page MUST have a done condition.**
@@ -301,10 +332,10 @@ Condition fields:
 | Type   | Required fields | Notes |
 |--------|----------------|-------|
 | click  | target         | |
-| type   | target, text   | Use delay: 60-100 for human-like typing |
+| type   | target, text   | Optional `delay` in ms between keystrokes (default 80) |
 | hover  | target         | |
 | scroll | target         | Scrolls element into view |
-| wait   | duration (ms)  | Pause for the viewer |
+| wait   | duration (ms)  | Pause for the viewer (default 1000ms) |
 | press  | key            | Keyboard key, e.g. "Enter", "Escape" |
 | select | target, option | Dropdown selection |
 
@@ -316,11 +347,14 @@ Condition fields:
 
 ## Troubleshooting
 
-- **Browser not responding**: `${CLAUDE_SKILL_DIR}/ndemo close` then `open` again
+- **Browser not responding**: `${CLAUDE_SKILL_DIR}/ndemo close` then `open` again.
+  Check `.ndemo/daemon.log` for browser daemon output.
 - **Element not found**: Run `${CLAUDE_SKILL_DIR}/ndemo page-state` to see what's
   actually on the page. The element might have a different name
   than expected. Check the app's source code for test IDs.
 - **Actions pass but look wrong**: Run with `--segment <id>` to
   replay just that segment and watch carefully.
+- **Render fails**: An error screenshot is saved as
+  `error-<segment-id>.png` in the output directory.
 - **TTS sounds wrong**: Edit narration text (punctuation affects
   pacing), or change voice/speed in playbook tts settings.
