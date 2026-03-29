@@ -47,37 +47,45 @@ async function render(
   const videoRawDir = path.join(outputDir, "video-raw");
   fs.mkdirSync(videoRawDir, { recursive: true });
 
+  // Use a physically larger viewport instead of deviceScaleFactor to get
+  // high-resolution video. Playwright's video recorder captures at logical
+  // pixel dimensions, so deviceScaleFactor > 1 would leave the content at
+  // 1/scale² of the video frame. We compensate with increased zoom below.
+  const scaledWidth = playbook.app.viewport.width * playbook.app.scale;
+  const scaledHeight = playbook.app.viewport.height * playbook.app.scale;
+
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
     viewport: {
-      width: playbook.app.viewport.width,
-      height: playbook.app.viewport.height,
+      width: scaledWidth,
+      height: scaledHeight,
     },
-    deviceScaleFactor: playbook.app.scale,
+    deviceScaleFactor: 1,
     colorScheme: playbook.app.colorScheme,
     locale: "en-US",
     recordVideo: {
       dir: videoRawDir,
       size: {
-        width: playbook.app.viewport.width * playbook.app.scale,
-        height: playbook.app.viewport.height * playbook.app.scale,
+        width: scaledWidth,
+        height: scaledHeight,
       },
     },
   });
 
   const page = await context.newPage();
 
-  // Apply zoom
+  // Apply zoom, scaled up to compensate for the larger viewport
+  const renderZoom = playbook.app.zoom * playbook.app.scale;
   await page.addInitScript(`
     document.addEventListener('DOMContentLoaded', () => {
-      document.body.style.zoom = '${playbook.app.zoom}';
+      document.body.style.zoom = '${renderZoom}';
     });
   `);
 
   await page.goto(playbook.app.url, { waitUntil: "load" });
   await page.evaluate(
     (z: number) => { document.body.style.zoom = String(z); },
-    playbook.app.zoom
+    renderZoom
   );
 
   if (playbook.app.setup) {
