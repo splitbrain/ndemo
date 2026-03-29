@@ -50,6 +50,11 @@ async function main() {
     ],
   });
 
+  // Print connection info immediately after browser launch,
+  // BEFORE navigation and setup — the parent process is waiting.
+  const cdpEndpoint = `http://localhost:${debugPort}`;
+  console.log(JSON.stringify({ wsEndpoint: cdpEndpoint }));
+
   const context = await browser.newContext({
     viewport: {
       width: playbook.app.viewport.width,
@@ -69,7 +74,9 @@ async function main() {
     });
   `);
 
-  await page.goto(playbook.app.url, { waitUntil: "networkidle" });
+  await page.goto(playbook.app.url, { waitUntil: "domcontentloaded" });
+  // Wait briefly for network to settle, but don't hang forever
+  await page.waitForLoadState("networkidle").catch(() => {});
 
   // Ensure zoom is applied
   await page.evaluate(
@@ -81,10 +88,6 @@ async function main() {
   if (playbook.app.setup) {
     await executeSetup(page, playbook.app.setup, { cwd: projectDir });
   }
-
-  // Print connection info to stdout (parent reads this)
-  const cdpEndpoint = `http://localhost:${debugPort}`;
-  console.log(JSON.stringify({ wsEndpoint: cdpEndpoint }));
 
   // Stay alive. Exit when browser closes.
   browser.on("disconnected", () => process.exit(0));

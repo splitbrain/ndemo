@@ -82,8 +82,12 @@ async function open(playbookPath: string): Promise<void> {
     let errOutput = "";
     const timeout = setTimeout(() => {
       child.kill();
-      reject(new Error(`Browser daemon did not start within 15s. stderr: ${errOutput}`));
-    }, 15000);
+      reject(new Error(
+        `Browser daemon did not start within 30s.` +
+        (errOutput ? `\nstderr: ${errOutput}` : "") +
+        (output ? `\nstdout: ${output}` : "")
+      ));
+    }, 30000);
 
     child.stdout!.on("data", (data: Buffer) => {
       output += data.toString();
