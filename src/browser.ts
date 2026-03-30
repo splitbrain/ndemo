@@ -183,10 +183,6 @@ async function reset(): Promise<void> {
   const playbook = loadPlaybook(info.playbookPath);
 
   await page.goto(playbook.app.url, { waitUntil: "load" });
-  await page.evaluate(
-    (z: number) => { document.body.style.zoom = String(z); },
-    playbook.app.zoom
-  );
 
   if (playbook.app.setup) {
     await executeSetup(page, playbook.app.setup);

@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { chromium } from "playwright";
 import { execa } from "execa";
@@ -8,6 +9,7 @@ import { executeSetup } from "./setup.js";
 import { ensureAudio } from "./tts.js";
 import { mergeAudioVideo } from "./merger.js";
 import { generateSrt } from "./subtitles.js";
+import { zoomExtensionArgs, setBrowserZoom } from "./zoom.js";
 
 function escapeHtml(text: string): string {
   return text
@@ -64,65 +66,46 @@ async function render(
   const framesDir = path.join(outputDir, ".frames");
   fs.mkdirSync(framesDir, { recursive: true });
 
-  // Use a physically larger viewport instead of deviceScaleFactor to get
-  // high-resolution video. Playwright's video recorder captures at logical
-  // pixel dimensions, so deviceScaleFactor > 1 would leave the content at
-  // 1/scale² of the video frame. We compensate with increased zoom below.
+  // Use a physically larger viewport so CDP screencast (which captures at
+  // logical pixel dimensions) produces high-resolution frames. Real browser
+  // zoom via the bundled extension then scales content up to fill this
+  // viewport while keeping vh/vw units correct.
   const scaledWidth = playbook.app.viewport.width * playbook.app.scale;
   const scaledHeight = playbook.app.viewport.height * playbook.app.scale;
+  const zoomPercent = playbook.app.zoom * playbook.app.scale * 100;
 
-  const renderZoom = playbook.app.zoom * playbook.app.scale;
-  const browser = await chromium.launch({ headless: true });
-
-  // Run setup in a non-recording context, then capture browser state
-  let storageState: Awaited<ReturnType<import("playwright").BrowserContext["storageState"]>> | undefined;
-  let startUrl = playbook.app.url;
-
-  if (playbook.app.setup) {
-    console.log("  Running setup...");
-    const setupContext = await browser.newContext({
-      viewport: { width: scaledWidth, height: scaledHeight },
-      deviceScaleFactor: 1,
-      colorScheme: playbook.app.colorScheme,
-      locale: "en-US",
-    });
-    const setupPage = await setupContext.newPage();
-    await setupPage.addInitScript(`
-      document.addEventListener('DOMContentLoaded', () => {
-        document.body.style.zoom = '${renderZoom}';
-      });
-    `);
-    await setupPage.goto(playbook.app.url, { waitUntil: "load" });
-    await setupPage.evaluate(
-      (z: number) => { document.body.style.zoom = String(z); },
-      renderZoom
-    );
-    await executeSetup(setupPage, playbook.app.setup);
-    startUrl = setupPage.url();
-    storageState = await setupContext.storageState();
-    await setupContext.close();
-  }
-
-  // Create context without recordVideo — we use CDP screencast instead
-  const context = await browser.newContext({
-    viewport: {
-      width: scaledWidth,
-      height: scaledHeight,
-    },
+  // Extensions require a persistent context and --headless=new.
+  const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "ndemo-render-"));
+  const context = await chromium.launchPersistentContext(userDataDir, {
+    headless: false,
+    args: [
+      "--headless=new",
+      ...zoomExtensionArgs(),
+    ],
+    viewport: { width: scaledWidth, height: scaledHeight },
     deviceScaleFactor: 1,
     colorScheme: playbook.app.colorScheme,
     locale: "en-US",
-    storageState,
   });
 
-  const page = await context.newPage();
+  // Wait for the zoom extension's service worker to be ready.
+  if (context.serviceWorkers().length === 0) {
+    await context.waitForEvent("serviceworker", { timeout: 5000 });
+  }
 
-  // Apply zoom, scaled up to compensate for the larger viewport
-  await page.addInitScript(`
-    document.addEventListener('DOMContentLoaded', () => {
-      document.body.style.zoom = '${renderZoom}';
-    });
-  `);
+  const page = context.pages()[0] || await context.newPage();
+
+  // Navigate to app and apply real browser zoom (needs an HTTP page for
+  // the extension content script). Zoom persists across navigations.
+  let startUrl = playbook.app.url;
+  await page.goto(playbook.app.url, { waitUntil: "load" });
+  await setBrowserZoom(page, zoomPercent);
+
+  if (playbook.app.setup) {
+    console.log("  Running setup...");
+    await executeSetup(page, playbook.app.setup);
+    startUrl = page.url();
+  }
 
   // Start CDP screencast for high-quality frame capture
   const cdp = await context.newCDPSession(page);
@@ -174,7 +157,7 @@ async function render(
 <html><head><meta charset="utf-8"><style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    width: calc(100vw / ${renderZoom}); height: calc(100vh / ${renderZoom});
+    width: 100vw; height: 100vh;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     background: ${bg}; color: ${fg};
@@ -194,10 +177,6 @@ async function render(
 
   // Navigate to the app for segment recording
   await page.goto(startUrl, { waitUntil: "load" });
-  await page.evaluate(
-    (z: number) => { document.body.style.zoom = String(z); },
-    renderZoom
-  );
 
   const preSegmentDurationMs = Date.now() - preSegmentStart;
 
@@ -222,7 +201,7 @@ async function render(
       await cdp.send("Page.stopScreencast");
       await cdp.detach();
       await context.close();
-      await browser.close();
+      fs.rmSync(userDataDir, { recursive: true, force: true });
       throw new Error(
         `Render failed at segment "${segment.id}", action ${result.actionIndex}: ${result.error}`
       );
@@ -244,7 +223,7 @@ async function render(
   }
   await cdp.detach();
   await context.close();
-  await browser.close();
+  fs.rmSync(userDataDir, { recursive: true, force: true });
 
   // Save video durations back to playbook
   savePlaybook(playbookPath, playbook);

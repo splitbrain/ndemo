@@ -1,6 +1,7 @@
 import { chromium } from "playwright";
 import { loadPlaybook } from "./playbook-io.js";
 import { executeSetup } from "./setup.js";
+import { zoomExtensionArgs, setBrowserZoom } from "./zoom.js";
 import net from "node:net";
 import fs from "node:fs";
 import path from "node:path";
@@ -30,8 +31,10 @@ async function main() {
 
   const playbook = loadPlaybook(playbookPath);
   const debugPort = await findFreePort();
+  const userDataDir = path.join(".ndemo", "browser-profile");
+  fs.mkdirSync(userDataDir, { recursive: true });
 
-  const browser = await chromium.launch({
+  const context = await chromium.launchPersistentContext(userDataDir, {
     headless: false,
     args: [
       `--remote-debugging-port=${debugPort}`,
@@ -41,17 +44,14 @@ async function main() {
       "--enable-gpu-rasterization",
       "--disable-lcd-text",
       "--font-render-hinting=medium",
-      "--disable-extensions",
       "--disable-default-apps",
       "--no-first-run",
       "--disable-infobars",
       "--disable-translate",
       "--disable-sync",
       "--disable-features=ChromeWhatsNewUI,MediaRouter",
+      ...zoomExtensionArgs(),
     ],
-  });
-
-  const context = await browser.newContext({
     viewport: {
       width: playbook.app.viewport.width,
       height: playbook.app.viewport.height,
@@ -61,14 +61,7 @@ async function main() {
     locale: "en-US",
   });
 
-  const page = await context.newPage();
-
-  // Apply zoom via init script
-  await page.addInitScript(`
-    document.addEventListener('DOMContentLoaded', () => {
-      document.body.style.zoom = '${playbook.app.zoom}';
-    });
-  `);
+  const page = context.pages()[0] || await context.newPage();
 
   // Print connection info to stdout BEFORE navigation so the parent
   // unblocks immediately — page load and setup can take arbitrarily long.
@@ -85,13 +78,15 @@ async function main() {
   fs.openSync(logPath, "w"); // becomes fd 1 (stdout)
   fs.openSync(logPath, "w"); // becomes fd 2 (stderr)
 
+  // Wait for the zoom extension's service worker to be ready.
+  if (context.serviceWorkers().length === 0) {
+    await context.waitForEvent("serviceworker", { timeout: 5000 });
+  }
+
   await page.goto(playbook.app.url, { waitUntil: "load" });
 
-  // Ensure zoom is applied
-  await page.evaluate(
-    (z: number) => { document.body.style.zoom = String(z); },
-    playbook.app.zoom
-  );
+  // Apply real browser zoom via the extension
+  await setBrowserZoom(page, playbook.app.zoom * 100);
 
   // Execute setup steps if any
   if (playbook.app.setup) {
@@ -99,11 +94,11 @@ async function main() {
   }
 
   // Stay alive. Exit when browser closes.
-  browser.on("disconnected", () => process.exit(0));
+  context.browser()?.on("disconnected", () => process.exit(0));
 
   // Handle SIGTERM gracefully
   process.on("SIGTERM", async () => {
-    await browser.close();
+    await context.close();
     process.exit(0);
   });
 }

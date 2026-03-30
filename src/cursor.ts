@@ -67,7 +67,7 @@ async function injectCursor(page: Page): Promise<void> {
 
 /**
  * Get an element's center and bounding rect in coordinates that work
- * for our fixed-position cursor, accounting for CSS zoom on body.
+ * for our fixed-position cursor.
  */
 async function getElementPosition(locator: Locator): Promise<{
   cx: number; cy: number;
@@ -76,18 +76,14 @@ async function getElementPosition(locator: Locator): Promise<{
   try {
     return await locator.evaluate((el) => {
       const r = el.getBoundingClientRect();
-      const zoom = parseFloat(document.body.style.zoom) || 1;
-      // getBoundingClientRect returns zoomed coordinates in the viewport.
-      // Fixed-position elements inside a zoomed body are also zoomed,
-      // so we need to divide by zoom to get the right CSS position.
       return {
-        cx: (r.left + r.width / 2) / zoom,
-        cy: (r.top + r.height / 2) / zoom,
+        cx: r.left + r.width / 2,
+        cy: r.top + r.height / 2,
         rect: {
-          x: r.left / zoom,
-          y: r.top / zoom,
-          width: r.width / zoom,
-          height: r.height / zoom,
+          x: r.left,
+          y: r.top,
+          width: r.width,
+          height: r.height,
         },
       };
     });
