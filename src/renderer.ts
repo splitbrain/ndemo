@@ -155,6 +155,11 @@ async function render(
     everyNthFrame: 1,
   });
 
+  // Track total pre-segment time (title card + navigation) so the merger
+  // can insert matching silence.  The screencast is already running, so any
+  // time spent here appears in the video and must be mirrored in the audio.
+  const preSegmentStart = Date.now();
+
   // Title card
   let titleCardDurationMs = 0;
   if (playbook.titleCard) {
@@ -193,6 +198,8 @@ async function render(
     (z: number) => { document.body.style.zoom = String(z); },
     renderZoom
   );
+
+  const preSegmentDurationMs = Date.now() - preSegmentStart;
 
   // Record segments
   const segmentTimings: Array<{ id: string; durationMs: number; audioDurationMs: number }> = [];
@@ -248,13 +255,21 @@ async function render(
 
   console.log(`  Captured ${frames.length} frames`);
 
-  // Assemble frames into video using ffmpeg concat demuxer
+  // Assemble frames into video using ffmpeg concat demuxer.
+  // The expected total duration lets us hold the last frame long enough to
+  // cover static segments where the screencast sends no new frames.
+  const expectedTotalSec =
+    (preSegmentDurationMs + segmentTimings.reduce((s, t) => s + t.durationMs, 0)) / 1000;
+
   const concatFilePath = path.join(framesDir, "frames.txt");
   let concatContent = "";
   for (let i = 0; i < frames.length; i++) {
     const duration = i < frames.length - 1
       ? frames[i + 1].timestamp - frames[i].timestamp
-      : 1 / 30; // last frame: hold for one frame at 30fps
+      : Math.max(
+          expectedTotalSec - (frames[i].timestamp - frames[0].timestamp),
+          1 / 30,
+        );
     concatContent += `file '${path.resolve(frames[i].filePath)}'\n`;
     concatContent += `duration ${Math.max(duration, 0.001).toFixed(6)}\n`;
   }
@@ -293,7 +308,7 @@ async function render(
     })),
     outputPath: finalOutput,
     outputDir,
-    titleCardDurationMs,
+    preSegmentDurationMs,
   });
 
   // Clean up intermediate video
@@ -309,14 +324,14 @@ async function render(
       videoDurationMs: segmentTimings[i].durationMs,
       audioDurationMs: s.audioDuration!,
     })),
-    titleCardDurationMs
+    preSegmentDurationMs
   );
   fs.writeFileSync(srtPath, srtContent);
 
   // Summary
   const stats = fs.statSync(finalOutput);
   const sizeMb = (stats.size / (1024 * 1024)).toFixed(1);
-  const totalDuration = titleCardDurationMs + segmentTimings.reduce((s, t) => s + t.durationMs, 0);
+  const totalDuration = preSegmentDurationMs + segmentTimings.reduce((s, t) => s + t.durationMs, 0);
   const minutes = Math.floor(totalDuration / 60000);
   const seconds = Math.round((totalDuration % 60000) / 1000);
 

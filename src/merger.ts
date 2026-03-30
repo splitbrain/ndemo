@@ -14,7 +14,8 @@ interface MergeOptions {
   segments: MergeSegment[];
   outputPath: string;
   outputDir: string;
-  titleCardDurationMs?: number;
+  /** Total dead time before the first segment (title card + navigation). */
+  preSegmentDurationMs?: number;
 }
 
 async function mergeAudioVideo(options: MergeOptions): Promise<void> {
@@ -22,15 +23,15 @@ async function mergeAudioVideo(options: MergeOptions): Promise<void> {
 
   const audioFiles: string[] = [];
 
-  // Prepend silence for title card (no audio during title)
-  if (options.titleCardDurationMs && options.titleCardDurationMs > 0) {
+  // Prepend silence for the pre-segment period (title card + navigation)
+  if (options.preSegmentDurationMs && options.preSegmentDurationMs > 0) {
     const titleSilencePath = path.join(outputDir, "audio", "silence-titlecard.mp3");
     fs.mkdirSync(path.join(outputDir, "audio"), { recursive: true });
     await execa("ffmpeg", [
       "-y",
       "-f", "lavfi",
       "-i", "anullsrc=r=44100:cl=mono",
-      "-t", String(options.titleCardDurationMs / 1000),
+      "-t", String(options.preSegmentDurationMs / 1000),
       "-q:a", "9",
       titleSilencePath,
     ]);
