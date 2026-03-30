@@ -124,12 +124,6 @@ async function render(
     });
   `);
 
-  await page.goto(startUrl, { waitUntil: "load" });
-  await page.evaluate(
-    (z: number) => { document.body.style.zoom = String(z); },
-    renderZoom
-  );
-
   // Start CDP screencast for high-quality frame capture
   const cdp = await context.newCDPSession(page);
 
@@ -175,7 +169,7 @@ async function render(
 <html><head><meta charset="utf-8"><style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    width: 100vw; height: 100vh;
+    width: calc(100vw / ${renderZoom}); height: calc(100vh / ${renderZoom});
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     background: ${bg}; color: ${fg};
@@ -191,13 +185,14 @@ async function render(
     console.log("  Recording title card...");
     await page.goto(`data:text/html;charset=utf-8,${encodeURIComponent(titleHtml)}`, { waitUntil: "load" });
     await new Promise(r => setTimeout(r, titleCardDurationMs));
-    // Navigate back to the app for segment recording
-    await page.goto(startUrl, { waitUntil: "load" });
-    await page.evaluate(
-      (z: number) => { document.body.style.zoom = String(z); },
-      renderZoom
-    );
   }
+
+  // Navigate to the app for segment recording
+  await page.goto(startUrl, { waitUntil: "load" });
+  await page.evaluate(
+    (z: number) => { document.body.style.zoom = String(z); },
+    renderZoom
+  );
 
   // Record segments
   const segmentTimings: Array<{ id: string; durationMs: number; audioDurationMs: number }> = [];
@@ -273,6 +268,7 @@ async function render(
     "-f", "concat",
     "-safe", "0",
     "-i", concatFilePath,
+    "-r", String(playbook.recording.fps),
     "-c:v", "libx264",
     "-crf", "17",
     "-preset", "slow",
