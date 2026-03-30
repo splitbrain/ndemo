@@ -9,6 +9,14 @@ import { ensureAudio } from "./tts.js";
 import { mergeAudioVideo } from "./merger.js";
 import { generateSrt } from "./subtitles.js";
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 async function render(
   playbookPath: string,
   outputPath?: string
@@ -153,6 +161,44 @@ async function render(
     everyNthFrame: 1,
   });
 
+  // Title card
+  let titleCardDurationMs = 0;
+  if (playbook.titleCard) {
+    const tc = playbook.titleCard;
+    titleCardDurationMs = tc.duration * 1000;
+    const isDark = playbook.app.colorScheme === "dark";
+    const bg = isDark ? "#1a1a2e" : "#f5f5f5";
+    const fg = isDark ? "#e0e0e0" : "#1a1a1a";
+    const subtitleColor = isDark ? "#a0a0b0" : "#666666";
+
+    const titleHtml = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: ${bg}; color: ${fg};
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  h1 { font-size: 4rem; font-weight: 700; text-align: center; line-height: 1.2; }
+  p  { font-size: 1.8rem; font-weight: 400; margin-top: 1rem; color: ${subtitleColor}; text-align: center; }
+</style></head><body>
+  <h1>${escapeHtml(tc.title)}</h1>
+  ${tc.subtitle ? `<p>${escapeHtml(tc.subtitle)}</p>` : ""}
+</body></html>`;
+
+    console.log("  Recording title card...");
+    await page.goto(`data:text/html;charset=utf-8,${encodeURIComponent(titleHtml)}`, { waitUntil: "load" });
+    await new Promise(r => setTimeout(r, titleCardDurationMs));
+    // Navigate back to the app for segment recording
+    await page.goto(startUrl, { waitUntil: "load" });
+    await page.evaluate(
+      (z: number) => { document.body.style.zoom = String(z); },
+      renderZoom
+    );
+  }
+
   // Record segments
   const segmentTimings: Array<{ id: string; durationMs: number; audioDurationMs: number }> = [];
 
@@ -251,6 +297,7 @@ async function render(
     })),
     outputPath: finalOutput,
     outputDir,
+    titleCardDurationMs,
   });
 
   // Clean up intermediate video
@@ -265,14 +312,15 @@ async function render(
       narration: s.narration,
       videoDurationMs: segmentTimings[i].durationMs,
       audioDurationMs: s.audioDuration!,
-    }))
+    })),
+    titleCardDurationMs
   );
   fs.writeFileSync(srtPath, srtContent);
 
   // Summary
   const stats = fs.statSync(finalOutput);
   const sizeMb = (stats.size / (1024 * 1024)).toFixed(1);
-  const totalDuration = segmentTimings.reduce((s, t) => s + t.durationMs, 0);
+  const totalDuration = titleCardDurationMs + segmentTimings.reduce((s, t) => s + t.durationMs, 0);
   const minutes = Math.floor(totalDuration / 60000);
   const seconds = Math.round((totalDuration % 60000) / 1000);
 

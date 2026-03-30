@@ -103,9 +103,18 @@ const SegmentSchema = z.object({
   videoDuration: z.number().optional(),
 });
 
+// ─── Title Card ─────────────────────────────────────
+
+const TitleCardSchema = z.object({
+  title: z.string().min(1),
+  subtitle: z.string().optional(),
+  duration: z.number().positive().default(3),
+});
+
 // ─── Playbook ────────────────────────────────────────
 
 const PlaybookSchema = z.object({
+  titleCard: TitleCardSchema.optional(),
   app: z.object({
     url: z.string().url(),
     viewport: z.object({
@@ -140,7 +149,7 @@ type SetupStep = z.infer<typeof SetupStepSchema>;
 export {
   PlaybookSchema, SegmentSchema, ActionSchema,
   TargetSchema, DoneConditionSchema, ConditionSchema,
-  SetupStepSchema,
+  SetupStepSchema, TitleCardSchema,
 };
 export type {
   Playbook, Segment, Action, Target, DoneCondition,

@@ -14,12 +14,28 @@ interface MergeOptions {
   segments: MergeSegment[];
   outputPath: string;
   outputDir: string;
+  titleCardDurationMs?: number;
 }
 
 async function mergeAudioVideo(options: MergeOptions): Promise<void> {
   const { videoPath, segments, outputPath, outputDir } = options;
 
   const audioFiles: string[] = [];
+
+  // Prepend silence for title card (no audio during title)
+  if (options.titleCardDurationMs && options.titleCardDurationMs > 0) {
+    const titleSilencePath = path.join(outputDir, "audio", "silence-titlecard.mp3");
+    fs.mkdirSync(path.join(outputDir, "audio"), { recursive: true });
+    await execa("ffmpeg", [
+      "-y",
+      "-f", "lavfi",
+      "-i", "anullsrc=r=44100:cl=mono",
+      "-t", String(options.titleCardDurationMs / 1000),
+      "-q:a", "9",
+      titleSilencePath,
+    ]);
+    audioFiles.push(titleSilencePath);
+  }
 
   // Build concatenated audio with silence gaps
   for (const segment of segments) {
@@ -80,6 +96,8 @@ async function mergeAudioVideo(options: MergeOptions): Promise<void> {
   try {
     fs.unlinkSync(filelistPath);
     fs.unlinkSync(combinedAudioPath);
+    const titleSilencePath = path.join(outputDir, "audio", "silence-titlecard.mp3");
+    if (fs.existsSync(titleSilencePath)) fs.unlinkSync(titleSilencePath);
     for (const segment of segments) {
       const silencePath = path.join(outputDir, "audio", `silence-${segment.id}.mp3`);
       if (fs.existsSync(silencePath)) fs.unlinkSync(silencePath);

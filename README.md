@@ -176,6 +176,11 @@ app:
       if:                             # conditional (skip if not met)
         visible: ".login-form"
 
+titleCard:                          # optional, adds a title frame
+  title: "My Demo"
+  subtitle: "Optional subtitle"     # optional
+  duration: 3                       # seconds (default 3)
+
 tts:                                # optional, defaults shown
   provider: openai
   voice: alloy

@@ -72,10 +72,10 @@ function splitIntoCues(text: string): string[] {
   return cues;
 }
 
-function generateSrt(segments: SubtitleSegment[]): string {
+function generateSrt(segments: SubtitleSegment[], initialOffsetMs = 0): string {
   const entries: string[] = [];
   let index = 1;
-  let offsetMs = 0;
+  let offsetMs = initialOffsetMs;
 
   for (const segment of segments) {
     if (segment.narration) {

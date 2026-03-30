@@ -115,6 +115,11 @@ app:
       done:
         visible: ".user-info"
 
+titleCard:                               # optional title card (shown as first frame)
+  title: "Editing a Wiki Page"           # displayed prominently
+  subtitle: "A quick tour of the editor" # optional subtitle
+  duration: 3                            # seconds to hold (default 3)
+
 tts:                                   # optional TTS configuration
   provider: openai                     # "openai" (default) or "elevenlabs"
   voice: alloy                         # TTS voice name (default "alloy")
