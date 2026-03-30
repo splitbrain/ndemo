@@ -108,7 +108,7 @@ const SegmentSchema = z.object({
 const TitleCardSchema = z.object({
   title: z.string().min(1),
   subtitle: z.string().optional(),
-  duration: z.number().positive().default(3),
+  duration: z.number().positive().default(3000),
 });
 
 // ─── Playbook ────────────────────────────────────────

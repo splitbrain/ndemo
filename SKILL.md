@@ -118,7 +118,7 @@ app:
 titleCard:                               # optional title card (shown as first frame)
   title: "Editing a Wiki Page"           # displayed prominently
   subtitle: "A quick tour of the editor" # optional subtitle
-  duration: 3                            # seconds to hold (default 3)
+  duration: 3000                         # milliseconds to hold (default 3000)
 
 tts:                                   # optional TTS configuration
   provider: openai                     # "openai" (default) or "elevenlabs"

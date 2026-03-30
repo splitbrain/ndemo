@@ -179,7 +179,7 @@ app:
 titleCard:                          # optional, adds a title frame
   title: "My Demo"
   subtitle: "Optional subtitle"     # optional
-  duration: 3                       # seconds (default 3)
+  duration: 3000                    # milliseconds (default 3000)
 
 tts:                                # optional, defaults shown
   provider: openai

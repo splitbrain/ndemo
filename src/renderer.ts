@@ -165,7 +165,7 @@ async function render(
   let titleCardDurationMs = 0;
   if (playbook.titleCard) {
     const tc = playbook.titleCard;
-    titleCardDurationMs = tc.duration * 1000;
+    titleCardDurationMs = tc.duration;
     const isDark = playbook.app.colorScheme === "dark";
     const bg = isDark ? "#1a1a2e" : "#f5f5f5";
     const fg = isDark ? "#e0e0e0" : "#1a1a1a";
